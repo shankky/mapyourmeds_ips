@@ -1,0 +1,26 @@
+{
+  "name": "mapyourmeds-ips",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Express.js port of the IPS / SuiteRx pharmacy API (Sybase SQL Anywhere via ODBC)",
+  "scripts": {
+    "start": "node ./bin/www",
+    "dev": "node ./bin/www",
+    "smoke": "node ./scripts/smoke-test.js",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "cors": "^2.8.6",
+    "debug": "~2.6.9",
+    "dotenv": "^16.6.1",
+    "ejs": "~2.6.1",
+    "express": "~4.16.1",
+    "http-errors": "~1.6.3",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "~1.9.1",
+    "odbc": "^2.4.9",
+    "uuid": "^9.0.1"
+  }
+}

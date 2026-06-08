@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+npm-debug.log*
+build/
+.DS_Store
+ips_node.zip
