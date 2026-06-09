@@ -1,0 +1,173 @@
+{
+  "info": {
+    "name": "mapyourmeds_ips — datasync API",
+    "description": "Every datasync endpoint built so far in the IPS / SuiteRx Express port.\n\nTOP-LEVEL FOLDERS:\n  • Status — health/connectivity checks.\n  • ⭐ PRIORITY — Consumer (Phase 2) — the 29 endpoints the live consumer (mym/config/ips.class.js) calls. Verified 29/29 -> 2xx on server. TEST THESE FIRST. Sub-grouped by controller.\n  • Parity (Phase 3) — additional MetizDatasyncAPI endpoints built ahead (SPs known); NOT called by the current consumer.\n\nAll API endpoints are POST. Inputs are mostly query params; two calls (PrescriptionData, GetDataByID) branch on body/query. Set the `baseUrl` + sample-id collection variables, then send.\n\nNOTE: datasync endpoints have NO auth (matching legacy). The core host (Login/Patient/Prescription/Drug, JWT) is Phase 4 and not in this collection yet.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "groupId", "value": "371", "type": "string" },
+    { "key": "facilityId", "value": "34", "type": "string" },
+    { "key": "drugId", "value": "2116", "type": "string" },
+    { "key": "doctorId", "value": "-1", "type": "string" },
+    { "key": "patientId", "value": "1966071", "type": "string" },
+    { "key": "rxNo", "value": "50078646", "type": "string" },
+    { "key": "fillId", "value": "1", "type": "string" },
+    { "key": "ndc", "value": "00093727198", "type": "string" },
+    { "key": "deliveryNo", "value": "1", "type": "string" },
+    { "key": "tranId", "value": "1966071", "type": "string" },
+    { "key": "date", "value": "2024-07-25", "type": "string" },
+    { "key": "startDate", "value": "2024-07-01", "type": "string" },
+    { "key": "endDate", "value": "2024-07-31", "type": "string" },
+    { "key": "startDateTime", "value": "2024-07-01 00:00:00", "type": "string" },
+    { "key": "endDateTime", "value": "2024-07-31 23:59:59", "type": "string" },
+    { "key": "createdDate", "value": "2024-07-25", "type": "string" },
+    { "key": "firstname", "value": "John", "type": "string" },
+    { "key": "lastname", "value": "Smith", "type": "string" },
+    { "key": "office", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Status",
+      "item": [
+        { "name": "Status dashboard (HTML)", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [""] }, "description": "Live DB connectivity dashboard (pool -> SELECT 1 -> dba.facility_fill_type)." } },
+        { "name": "Status (JSON)", "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": { "raw": "{{baseUrl}}/?format=json", "host": ["{{baseUrl}}"], "path": [""], "query": [{ "key": "format", "value": "json" }] }, "description": "Same checks as JSON; HTTP 503 when degraded." } },
+        { "name": "Health (liveness)", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }, "description": "Lightweight liveness ping (no DB)." } }
+      ]
+    },
+    {
+      "name": "⭐ PRIORITY — Consumer (Phase 2)",
+      "description": "The 29 endpoints the live consumer (ips.class.js) calls. Verified 29/29 -> 2xx on server. Test these first. Sub-grouped by controller.",
+      "item": [
+        {
+          "name": "Facility",
+          "item": [
+            { "name": "GetFacilityGroup  (getAllGroups)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Facility/GetFacilityGroup", "host": ["{{baseUrl}}"], "path": ["api", "Facility", "GetFacilityGroup"] } } },
+            { "name": "GetAllFacility  (getAllFacility)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Facility/GetAllFacility", "host": ["{{baseUrl}}"], "path": ["api", "Facility", "GetAllFacility"] } } }
+          ]
+        },
+        {
+          "name": "GetDataByID",
+          "item": [
+            { "name": "?drug_id  (getDrugByGroup)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/GetDataByID?groupid={{groupId}}&drug_id={{drugId}}", "host": ["{{baseUrl}}"], "path": ["api", "GetDataByID"], "query": [{ "key": "groupid", "value": "{{groupId}}" }, { "key": "drug_id", "value": "{{drugId}}" }] }, "description": "Bare-controller branch: drug_id present -> sp_mym_getdrugbyfacility." } },
+            { "name": "?doctor_id  (getDoctorByGroup)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/GetDataByID?groupid={{groupId}}&doctor_id={{doctorId}}", "host": ["{{baseUrl}}"], "path": ["api", "GetDataByID"], "query": [{ "key": "groupid", "value": "{{groupId}}" }, { "key": "doctor_id", "value": "{{doctorId}}" }] }, "description": "Bare-controller branch: doctor_id present -> sp_mym_getdoctorbyfacility." } }
+          ]
+        },
+        {
+          "name": "TaskManagement",
+          "item": [
+            { "name": "GetPatientByFacility  (getPatientsByFacility)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/GetPatientByFacility?external_facility_id={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "GetPatientByFacility"], "query": [{ "key": "external_facility_id", "value": "{{facilityId}}" }] } } },
+            { "name": "GetPatientData  (getPatientsData)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/GetPatientData?firstname={{firstname}}&lastname={{lastname}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "GetPatientData"], "query": [{ "key": "firstname", "value": "{{firstname}}" }, { "key": "lastname", "value": "{{lastname}}" }] } } },
+            { "name": "FillingstatusByRxnumber (-> bool)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/FillingstatusByRxnumber?Rxnumber={{rxNo}}&Patientid={{patientId}}&Createddate={{createdDate}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "FillingstatusByRxnumber"], "query": [{ "key": "Rxnumber", "value": "{{rxNo}}" }, { "key": "Patientid", "value": "{{patientId}}" }, { "key": "Createddate", "value": "{{createdDate}}" }] } } },
+            { "name": "PVstatusByRxnumber (-> bool)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/PVstatusByRxnumber?Rxnumber={{rxNo}}&Patientid={{patientId}}&Createddate={{createdDate}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "PVstatusByRxnumber"], "query": [{ "key": "Rxnumber", "value": "{{rxNo}}" }, { "key": "Patientid", "value": "{{patientId}}" }, { "key": "Createddate", "value": "{{createdDate}}" }] } } },
+            { "name": "ManifeststatusByRxnumber (-> string)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/ManifeststatusByRxnumber?Rxnumber={{rxNo}}&Patientid={{patientId}}&Createddate={{createdDate}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "ManifeststatusByRxnumber"], "query": [{ "key": "Rxnumber", "value": "{{rxNo}}" }, { "key": "Patientid", "value": "{{patientId}}" }, { "key": "Createddate", "value": "{{createdDate}}" }] } } },
+            { "name": "PvoneSteponestatusByRxnumber (-> bool)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/PvoneSteponestatusByRxnumber?Rxnumber={{rxNo}}&Createddate={{createdDate}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "PvoneSteponestatusByRxnumber"], "query": [{ "key": "Rxnumber", "value": "{{rxNo}}" }, { "key": "Createddate", "value": "{{createdDate}}" }] } } },
+            { "name": "PvoneSteptwostatusByRxnumber (-> array)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/PvoneSteptwostatusByRxnumber?Rxnumber={{rxNo}}&Createddate={{createdDate}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "PvoneSteptwostatusByRxnumber"], "query": [{ "key": "Rxnumber", "value": "{{rxNo}}" }, { "key": "Createddate", "value": "{{createdDate}}" }] } } },
+            { "name": "DeliveryByPatient", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/TaskManagement/DeliveryByPatient?Patient_id={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "TaskManagement", "DeliveryByPatient"], "query": [{ "key": "Patient_id", "value": "{{patientId}}" }] } } }
+          ]
+        },
+        {
+          "name": "PrescriptionData",
+          "item": [
+            { "name": "?external_facility_id  (getPrescriptionsByFacility)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData?external_facility_id={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData"], "query": [{ "key": "external_facility_id", "value": "{{facilityId}}" }] }, "description": "Bare-controller branch (query form)." } },
+            { "name": "(body)  (getPrescriptionsByGroupIdAndDate)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"LastUpdatetime\": \"{{date}}\",\n  \"groupid\": \"{{groupId}}\",\n  \"wholeprofile\": true\n}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData"] }, "description": "Bare-controller branch (body form: groupid + LastUpdatetime)." } },
+            { "name": "GetSplitPrescriptions  (getSplitPrescriptionsByFacility)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/GetSplitPrescriptions?FacilityID={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "GetSplitPrescriptions"], "query": [{ "key": "FacilityID", "value": "{{facilityId}}" }] } } },
+            { "name": "Getprescriptiondetailbyrxno  (getPrescriptionDetailByRxNo)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/Getprescriptiondetailbyrxno?rx_no={{rxNo}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "Getprescriptiondetailbyrxno"], "query": [{ "key": "rx_no", "value": "{{rxNo}}" }] } } },
+            { "name": "GetPrescriptionByFillid  (getPrescriptionByFillId)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/GetPrescriptionByFillid?FillID={{fillId}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "GetPrescriptionByFillid"], "query": [{ "key": "FillID", "value": "{{fillId}}" }] } } },
+            { "name": "GetDrugUpdate  (getDrugFromDate)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/GetDrugUpdate?date={{date}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "GetDrugUpdate"], "query": [{ "key": "date", "value": "{{date}}" }] } } },
+            { "name": "Getdeliverybypatientanddate", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/Getdeliverybypatientanddate?Patientid={{patientId}}&startdate={{startDate}}&enddate={{endDate}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "Getdeliverybypatientanddate"], "query": [{ "key": "Patientid", "value": "{{patientId}}" }, { "key": "startdate", "value": "{{startDate}}" }, { "key": "enddate", "value": "{{endDate}}" }] } } },
+            { "name": "Getdeliverybyfacilityanddate", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/Getdeliverybyfacilityanddate?facility={{facilityId}}&startdate={{startDate}}&enddate={{endDate}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "Getdeliverybyfacilityanddate"], "query": [{ "key": "facility", "value": "{{facilityId}}" }, { "key": "startdate", "value": "{{startDate}}" }, { "key": "enddate", "value": "{{endDate}}" }] } } },
+            { "name": "GetRoute4MeDataByDate", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/GetRoute4MeDataByDate?startdatetime={{startDateTime}}&enddatetime={{endDateTime}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "GetRoute4MeDataByDate"], "query": [{ "key": "startdatetime", "value": "{{startDateTime}}" }, { "key": "enddatetime", "value": "{{endDateTime}}" }] } } },
+            { "name": "Getprescriptionimagepath (-> string)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/Getprescriptionimagepath?tran_id={{tranId}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "Getprescriptionimagepath"], "query": [{ "key": "tran_id", "value": "{{tranId}}" }] } } },
+            { "name": "Getpatientbyinternalid  (getPatientByExternalId)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/PrescriptionData/Getpatientbyinternalid?internalid={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "PrescriptionData", "Getpatientbyinternalid"], "query": [{ "key": "internalid", "value": "{{patientId}}" }] } } }
+          ]
+        },
+        {
+          "name": "Cycle",
+          "item": [
+            { "name": "Getcyclerx_status  (getCycleRx)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getcyclerx_status", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getcyclerx_status"] } } },
+            { "name": "Getcycle_Inhospital  (getCycleInhospital)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getcycle_Inhospital", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getcycle_Inhospital"] } } }
+          ]
+        },
+        {
+          "name": "RefillRequestData",
+          "item": [
+            { "name": "GetWeeklyRefillReminder  (getWeeklyRefillReminder)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/RefillRequestData/GetWeeklyRefillReminder", "host": ["{{baseUrl}}"], "path": ["api", "RefillRequestData", "GetWeeklyRefillReminder"] } } }
+          ]
+        },
+        {
+          "name": "MedSheet",
+          "item": [
+            { "name": "GeteMedPassData  (getMedPassData)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GeteMedPassData?date={{date}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GeteMedPassData"], "query": [{ "key": "date", "value": "{{date}}" }] } } }
+          ]
+        },
+        {
+          "name": "DrugReceive",
+          "item": [
+            { "name": "Getpatientimagepath (-> string)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/Getpatientimagepath?patient_id={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "Getpatientimagepath"], "query": [{ "key": "patient_id", "value": "{{patientId}}" }] } } },
+            { "name": "GetDrugimagepath (-> string)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/GetDrugimagepath?ndc={{ndc}}", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "GetDrugimagepath"], "query": [{ "key": "ndc", "value": "{{ndc}}" }] } } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Parity (Phase 3) — not consumer-called",
+      "description": "Additional MetizDatasyncAPI endpoints built ahead. Not called by the current consumer; lower test priority.",
+      "item": [
+        {
+          "name": "Facility",
+          "item": [
+            { "name": "GetAllFacilityByGroupID ?groupid", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Facility/GetAllFacilityByGroupID?groupid={{groupId}}", "host": ["{{baseUrl}}"], "path": ["api", "Facility", "GetAllFacilityByGroupID"], "query": [{ "key": "groupid", "value": "{{groupId}}" }] } } }
+          ]
+        },
+        {
+          "name": "GetDataByID",
+          "item": [
+            { "name": "?patient_id  (GetUpdatedPatientData)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/GetDataByID?groupid={{groupId}}&patient_id={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "GetDataByID"], "query": [{ "key": "groupid", "value": "{{groupId}}" }, { "key": "patient_id", "value": "{{patientId}}" }] } } },
+            { "name": "?external_facility_id  (GetUpdatedFacilityData)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/GetDataByID?groupid={{groupId}}&external_facility_id={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "GetDataByID"], "query": [{ "key": "groupid", "value": "{{groupId}}" }, { "key": "external_facility_id", "value": "{{facilityId}}" }] } } }
+          ]
+        },
+        {
+          "name": "Cycle",
+          "item": [
+            { "name": "Getcyclerx_7days", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getcyclerx_7days", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getcyclerx_7days"] } } },
+            { "name": "Getcyclerx_14days", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getcyclerx_14days", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getcyclerx_14days"] } } },
+            { "name": "Getcyclerx_21days", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getcyclerx_21days", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getcyclerx_21days"] } } },
+            { "name": "Getdeliverydriverfor2days", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getdeliverydriverfor2days", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getdeliverydriverfor2days"] } } },
+            { "name": "Getpv2statusbyrx ?rx_id", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getpv2statusbyrx?rx_id={{rxNo}}", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getpv2statusbyrx"], "query": [{ "key": "rx_id", "value": "{{rxNo}}" }] } } },
+            { "name": "Getbilledstatusbyrx ?rx_id", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/Cycle/Getbilledstatusbyrx?rx_id={{rxNo}}", "host": ["{{baseUrl}}"], "path": ["api", "Cycle", "Getbilledstatusbyrx"], "query": [{ "key": "rx_id", "value": "{{rxNo}}" }] } } }
+          ]
+        },
+        {
+          "name": "RefillRequestData",
+          "item": [
+            { "name": "GetRefillRequestLog", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/RefillRequestData/GetRefillRequestLog", "host": ["{{baseUrl}}"], "path": ["api", "RefillRequestData", "GetRefillRequestLog"] } } },
+            { "name": "GetDelivery_TobeDelivered", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/RefillRequestData/GetDelivery_TobeDelivered", "host": ["{{baseUrl}}"], "path": ["api", "RefillRequestData", "GetDelivery_TobeDelivered"] } } },
+            { "name": "GetNewRx_TobeDelivered", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/RefillRequestData/GetNewRx_TobeDelivered", "host": ["{{baseUrl}}"], "path": ["api", "RefillRequestData", "GetNewRx_TobeDelivered"] } } },
+            { "name": "GetPartialPrescriptionbyFacility ?facility_idd", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/RefillRequestData/GetPartialPrescriptionbyFacility?facility_idd={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "RefillRequestData", "GetPartialPrescriptionbyFacility"], "query": [{ "key": "facility_idd", "value": "{{facilityId}}" }] } } }
+          ]
+        },
+        {
+          "name": "MedSheet",
+          "item": [
+            { "name": "GetPatientMedSheetReport", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GetPatientMedSheetReport?ae_patient_id={{patientId}}&ad_startdate={{startDate}}&ae_office={{office}}&ad_enddate={{endDate}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GetPatientMedSheetReport"], "query": [{ "key": "ae_patient_id", "value": "{{patientId}}" }, { "key": "ad_startdate", "value": "{{startDate}}" }, { "key": "ae_office", "value": "{{office}}" }, { "key": "ad_enddate", "value": "{{endDate}}" }] } } },
+            { "name": "GetIPSInternalPatientid ?patientexternalid", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GetIPSInternalPatientid?patientexternalid={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GetIPSInternalPatientid"], "query": [{ "key": "patientexternalid", "value": "{{patientId}}" }] } } },
+            { "name": "GetProfileChangedPatientByGroup", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GetProfileChangedPatientByGroup?groupid={{groupId}}&facilityid={{facilityId}}&lastdate={{date}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GetProfileChangedPatientByGroup"], "query": [{ "key": "groupid", "value": "{{groupId}}" }, { "key": "facilityid", "value": "{{facilityId}}" }, { "key": "lastdate", "value": "{{date}}" }] } } },
+            { "name": "GetPrescriptionDataByRxNumber ?rxnumber", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GetPrescriptionDataByRxNumber?rxnumber={{rxNo}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GetPrescriptionDataByRxNumber"], "query": [{ "key": "rxnumber", "value": "{{rxNo}}" }] } } },
+            { "name": "GetChangedPrescriptionByPatient ?patientid", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/MedSheet/GetChangedPrescriptionByPatient?patientid={{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "MedSheet", "GetChangedPrescriptionByPatient"], "query": [{ "key": "patientid", "value": "{{patientId}}" }] } } }
+          ]
+        },
+        {
+          "name": "DrugReceive",
+          "item": [
+            { "name": "Getsystempath (-> string)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/Getsystempath", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "Getsystempath"] } } },
+            { "name": "Getdeliverylist (body {deliveryno, facilityid})", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"deliveryno\": \"{{deliveryNo}}\",\n  \"facilityid\": \"{{facilityId}}\"\n}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/Getdeliverylist", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "Getdeliverylist"] } } },
+            { "name": "Getdeliverynobyfacility ?facilityid", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/Getdeliverynobyfacility?facilityid={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "Getdeliverynobyfacility"], "query": [{ "key": "facilityid", "value": "{{facilityId}}" }] } } },
+            { "name": "GetDeliveryPendingList ?facilityid", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/GetDeliveryPendingList?facilityid={{facilityId}}", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "GetDeliveryPendingList"], "query": [{ "key": "facilityid", "value": "{{facilityId}}" }] } } },
+            { "name": "GetDrugDescription ?ndc", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/api/DrugReceive/GetDrugDescription?ndc={{ndc}}", "host": ["{{baseUrl}}"], "path": ["api", "DrugReceive", "GetDrugDescription"], "query": [{ "key": "ndc", "value": "{{ndc}}" }] } } }
+          ]
+        }
+      ]
+    }
+  ]
+}

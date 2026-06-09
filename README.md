@@ -13,12 +13,11 @@ Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` an
 ## Status
 
 - **Phase 1 — Skeleton & DB connectivity: COMPLETE & verified on server** (`npm run smoke` green).
-- **Phase 2 — Consumer-critical endpoints: COMPLETE & verified on server** (all 28 endpoints the live
-  `ips.class.js` calls, incl. the `GetDataByID` / `PrescriptionData` branching). On-server smoke:
-  27/29 → 2xx first run; the 2 initial 500s fixed via **legacy-parity error swallowing** (the .NET
-  data layer returned `[]`/`""` on query errors — preserved so the consumer never sees a 500).
-  Re-run `npm run smoke:endpoints` to confirm 29/29.
-- Phase 3 (remaining datasync parity) + Phase 4 (auth + core host) are next.
+- **Phase 2 — Consumer-critical endpoints: COMPLETE & VERIFIED ON SERVER — 29/29 endpoint smoke → 2xx**
+  (all 28 endpoints the live `ips.class.js` calls, incl. the `GetDataByID` / `PrescriptionData`
+  branching). The 2 initial 500s were fixed via **legacy-parity error swallowing** (the .NET data
+  layer returned `[]`/`""` on query errors — preserved so the consumer never sees a 500).
+- Phase 4 (auth + core host) is next; Phase 3 (remaining datasync parity) mostly already coded.
 
 > **Error behavior (legacy parity):** datasync list/string endpoints **swallow DB/SP errors and
 > return `[]`/`""` with HTTP 200** (matching the .NET `HelperEntityMap`). The real error is still
@@ -32,6 +31,9 @@ npm start                               # terminal 1
 npm run smoke:endpoints                 # terminal 2 (set SMK_* env to valid IDs)
 npm run routes                          # list all registered routes
 ```
+
+**Postman:** import `postman/mapyourmeds_ips.postman_collection.json` (all 29 Phase-2 endpoints +
+status checks). Set the `baseUrl` + sample-id collection variables, then send. See `postman/README.md`.
 
 ## Setup (on the server)
 
