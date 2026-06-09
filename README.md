@@ -12,8 +12,19 @@ Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` an
 
 ## Status
 
-- **Phase 1 — Skeleton & DB connectivity: COMPLETE** (pending on-server smoke test).
-- Phase 2 (consumer-critical endpoints) is next.
+- **Phase 1 — Skeleton & DB connectivity: COMPLETE & verified on server** (`npm run smoke` green).
+- **Phase 2 — Consumer-critical endpoints: CODE COMPLETE** (all 28 endpoints the live
+  `ips.class.js` calls, incl. the `GetDataByID` / `PrescriptionData` branching). Pending on-server
+  endpoint smoke: `npm start` then `node scripts/smoke-endpoints.js` (or `npm run smoke:endpoints`).
+- Phase 3 (remaining datasync parity) + Phase 4 (auth + core host) are next.
+
+### Verify the endpoints (on the server)
+
+```bash
+npm start                               # terminal 1
+npm run smoke:endpoints                 # terminal 2 (set SMK_* env to valid IDs)
+npm run routes                          # list all registered routes
+```
 
 ## Setup (on the server)
 
@@ -43,8 +54,17 @@ valid Rx number on this DB. **Get a green smoke test before building Phase 2.**
 
 ```bash
 npm start          # node ./bin/www  (PORT from .env, default 3000)
-curl http://localhost:3000/health
 ```
+
+Then open **`http://localhost:3000/`** — a live **status dashboard** that checks, with
+✅/❌ symbols and timings:
+1. ODBC pool comes up
+2. a query executes (`SELECT 1`)
+3. a real table read works (`SELECT TOP 5 * FROM dba.facility_fill_type`)
+
+It shows `✅ HEALTHY` / `❌ DEGRADED`, auto-refreshes every 15s, and returns JSON for
+monitoring at `/?format=json` (HTTP 503 when degraded). `GET /health` is a lightweight
+liveness ping (no DB).
 
 ## Project layout (Phase 1)
 
@@ -55,11 +75,15 @@ db/queryHelper.js      # parameterized executeQuery, callProc, callSql + helpers
 utils/logger.js        # structured console logger (replaces Logger.cs)
 utils/phone.js         # formatPhone / formatFax (mirror .NET BO mappers)
 middleware/errorHandler.js  # JSON 404 + central error handler
-routes/datasync/       # MetizDatasyncAPI-equivalent routers (filled in Phase 2/3)
+middleware/asyncHandler.js  # wraps async routes -> next(err)
+routes/status.js       # GET / status dashboard (live DB connectivity check)
+routes/datasync/       # MetizDatasyncAPI-equivalent routers (Phase 2 done; Phase 3 parity)
 routes/core/           # SuiterxWebAPI-equivalent routers (Phase 4)
 repositories/          # one fn per stored proc (Phase 2+)
 mappers/               # BO response mappers (Phase 4)
-scripts/smoke-test.js  # IPS-012 connectivity check
+scripts/smoke-test.js       # IPS-012 connectivity check (npm run smoke)
+scripts/smoke-endpoints.js  # hits all 28 consumer endpoints (npm run smoke:endpoints)
+scripts/list-routes.js      # prints registered routes (npm run routes)
 app.js  bin/www        # express app + server bootstrap (pools init/close)
 ```
 

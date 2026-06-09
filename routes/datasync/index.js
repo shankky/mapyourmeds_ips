@@ -2,20 +2,26 @@
 
 /**
  * Datasync API router group — the MetizDatasyncAPI-equivalent surface
- * (base path `/api`). Mounted in app.js. Individual controller routers are
- * added in Phase 2 (consumer-critical) and Phase 3 (parity):
- *   Account, Cycle, DrugReceive, Facility, GetDataByID, Login, MedSheet,
- *   PrescriptionData, RefillRequestData, TaskManagement.
+ * (base path `/api`). Mounted in app.js. Matches the legacy behavior: no token
+ * enforcement on datasync (IPS-004).
  *
- * Matches the legacy behavior: no token enforcement on datasync (IPS-004).
+ * Controller routers mount by exact controller-name segment (case-sensitive) so
+ * the consumer's URLs match byte-for-byte, e.g. POST /api/Facility/GetAllFacility.
+ *
+ * Phase 2 (consumer-critical) controllers below. Phase 3 adds Account + the
+ * remaining parity actions (many already present as parity handlers here).
  */
 
 const express = require('express');
 const router = express.Router();
 
-// Phase 2 routers mount here, e.g.:
-// router.use('/Facility', require('./facility'));
-// router.use('/PrescriptionData', require('./prescriptionData'));
-// ...
+router.use('/Facility', require('./facility'));
+router.use('/GetDataByID', require('./getDataById'));
+router.use('/TaskManagement', require('./taskManagement'));
+router.use('/PrescriptionData', require('./prescriptionData'));
+router.use('/Cycle', require('./cycle'));
+router.use('/RefillRequestData', require('./refillRequestData'));
+router.use('/MedSheet', require('./medSheet'));
+router.use('/DrugReceive', require('./drugReceive'));
 
 module.exports = router;

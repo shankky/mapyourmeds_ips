@@ -24,6 +24,7 @@ const config = require('./config/env');
 const logger = require('./utils/logger');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
+const statusRouter = require('./routes/status');
 const datasyncRouter = require('./routes/datasync');
 const coreRouter = require('./routes/core');
 
@@ -45,11 +46,13 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Health check (IPS-062 stub) -------------------------------------------
-app.get('/health', async (req, res) => {
-  // Lightweight liveness check; deep DB check added in Phase 5.
+// --- Health check (lightweight liveness; no DB) ----------------------------
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', env: config.env, time: new Date().toISOString() });
 });
+
+// --- Status dashboard at / (live DB connectivity + execution check) --------
+app.use('/', statusRouter);
 
 // --- API routes -------------------------------------------------------------
 // Both groups mount under /api. Controller names differ, so paths don't collide.

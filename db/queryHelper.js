@@ -98,6 +98,67 @@ async function recordGtZero(sql, params = [], pool = null) {
   return Number.isFinite(v) && v > 0;
 }
 
+/**
+ * Connectivity + execution health check. Runs three escalating probes against
+ * the IPS pool and returns a structured result (never throws):
+ *   1. pool      — can we acquire/create the pool?
+ *   2. select1   — does a trivial query execute? (SELECT 1)
+ *   3. tableRead — does a real table read work? (SELECT TOP n FROM dba.facility_fill_type)
+ * Used by the status page on `/`.
+ */
+async function checkConnection() {
+  const started = Date.now();
+  const checks = {
+    pool: { ok: false, ms: null, detail: null },
+    select1: { ok: false, ms: null, detail: null },
+    tableRead: { ok: false, ms: null, detail: null, rowCount: null },
+  };
+
+  // 1) pool
+  let t = Date.now();
+  let pool;
+  try {
+    pool = await getPool();
+    checks.pool.ok = true;
+    checks.pool.ms = Date.now() - t;
+  } catch (err) {
+    checks.pool.ms = Date.now() - t;
+    checks.pool.detail = err.message;
+    return finalize(checks, started); // can't go further without a pool
+  }
+
+  // 2) SELECT 1
+  t = Date.now();
+  try {
+    const rows = await pool.query('SELECT 1 AS ok');
+    checks.select1.ok = Array.isArray(rows) && rows.length > 0;
+    checks.select1.ms = Date.now() - t;
+    if (!checks.select1.ok) checks.select1.detail = 'no rows returned';
+  } catch (err) {
+    checks.select1.ms = Date.now() - t;
+    checks.select1.detail = err.message;
+  }
+
+  // 3) real table read (basic syntax + execution, like the scaffold sample)
+  t = Date.now();
+  try {
+    const rows = await pool.query('SELECT TOP 5 * FROM dba.facility_fill_type');
+    checks.tableRead.ok = Array.isArray(rows);
+    checks.tableRead.ms = Date.now() - t;
+    checks.tableRead.rowCount = Array.isArray(rows) ? rows.length : null;
+  } catch (err) {
+    checks.tableRead.ms = Date.now() - t;
+    checks.tableRead.detail = err.message;
+  }
+
+  return finalize(checks, started);
+}
+
+function finalize(checks, started) {
+  const ok = Object.values(checks).every((c) => c.ok);
+  return { ok, checks, totalMs: Date.now() - started, checkedAt: new Date().toISOString() };
+}
+
 module.exports = {
   executeQuery,
   callProc,
@@ -106,4 +167,5 @@ module.exports = {
   getSpecificColumn,
   recordExists,
   recordGtZero,
+  checkConnection,
 };
