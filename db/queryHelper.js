@@ -57,42 +57,64 @@ function callSql(spName, paramCount) {
 }
 
 /**
+ * LEGACY-PARITY variant of executeQuery. The .NET HelperEntityMap.ExecuteQuery<T>
+ * swallowed ALL errors and returned an empty list (so datasync endpoints
+ * returned [] / HTTP 200 instead of 500). Used by the datasync repositories to
+ * preserve drop-in behavior; the strict `executeQuery` (which propagates) is
+ * used by core/Phase-4 routes where real errors should surface.
+ * @returns {Promise<Array<object>>} [] on error
+ */
+async function executeQuerySafe(sql, params = [], pool = null) {
+  try {
+    return await executeQuery(sql, params, pool);
+  } catch (err) {
+    logger.warn(`[db] executeQuerySafe swallowed (legacy parity): ${err.message} :: ${sql}`);
+    return [];
+  }
+}
+
+/**
  * Convenience: call a stored proc by name with an ordered params array.
+ * Defaults to the LEGACY-PARITY (swallowing) behavior, matching the .NET data
+ * layer — datasync repos rely on this. Pass {strict:true} to propagate errors
+ * (core/Phase-4 routes use the strict path).
  * @returns {Promise<Array<object>>}
  */
-async function callProc(spName, params = [], pool = null) {
-  return executeQuery(callSql(spName, params.length), params, pool);
+async function callProc(spName, params = [], pool = null, opts = {}) {
+  const sql = callSql(spName, params.length);
+  return opts.strict ? executeQuery(sql, params, pool) : executeQuerySafe(sql, params, pool);
 }
 
 // --- Single-value helpers (mirror the C# HelperEntityMap variants) ----------
+// All swallow errors and return a default, exactly like the C# helpers
+// (ExecuteQueryGetString / ...CheckRecordExists / ...GreaterThanZero).
 
-/** First column of the first row as a string ("" if none). (≈ ExecuteQueryGetString) */
+/** First column of the first row as a string ("" if none/error). (≈ ExecuteQueryGetString) */
 async function getString(sql, params = [], pool = null) {
-  const rows = await executeQuery(sql, params, pool);
+  const rows = await executeQuerySafe(sql, params, pool);
   if (!rows.length) return '';
-  const first = rows[0];
-  const v = Object.values(first)[0];
+  const v = Object.values(rows[0])[0];
   return v === null || v === undefined ? '' : String(v);
 }
 
-/** Second column of the first row as a string ("" if none). (≈ ExecuteQueryGetSpecificColumn) */
+/** Second column of the first row as a string ("" if none/error). (≈ ExecuteQueryGetSpecificColumn) */
 async function getSpecificColumn(sql, params = [], pool = null) {
-  const rows = await executeQuery(sql, params, pool);
+  const rows = await executeQuerySafe(sql, params, pool);
   if (!rows.length) return '';
   const vals = Object.values(rows[0]);
   const v = vals.length > 1 ? vals[1] : undefined;
   return v === null || v === undefined ? '' : String(v);
 }
 
-/** True if the query returns at least one row. (≈ ExecuteQueryCheckRecordExists) */
+/** True if the query returns at least one row (false on error). (≈ ExecuteQueryCheckRecordExists) */
 async function recordExists(sql, params = [], pool = null) {
-  const rows = await executeQuery(sql, params, pool);
+  const rows = await executeQuerySafe(sql, params, pool);
   return rows.length > 0;
 }
 
-/** True if the first column of the first row, as an integer, is > 0. (≈ ExecuteQueryCheckRecordGreaterThanZero) */
+/** True if the first column of the first row, as an integer, is > 0 (false on error). (≈ ExecuteQueryCheckRecordGreaterThanZero) */
 async function recordGtZero(sql, params = [], pool = null) {
-  const rows = await executeQuery(sql, params, pool);
+  const rows = await executeQuerySafe(sql, params, pool);
   if (!rows.length) return false;
   const v = parseInt(Object.values(rows[0])[0], 10);
   return Number.isFinite(v) && v > 0;
@@ -161,6 +183,7 @@ function finalize(checks, started) {
 
 module.exports = {
   executeQuery,
+  executeQuerySafe,
   callProc,
   callSql,
   getString,

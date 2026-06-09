@@ -25,10 +25,14 @@ function notFound(req, res, next) {
 function errorHandler(err, req, res, next) {
   const status = err.status || err.statusCode || 500;
   logger.error(`[http] ${req.method} ${req.originalUrl} -> ${status}: ${err.message}`);
+  // Surface the underlying message when not in production, OR when DEBUG_ERRORS=1
+  // (handy for the on-server endpoint smoke test). DB/SP errors are operational,
+  // not PHI — but keep them off by default in production.
+  const showDetail = process.env.NODE_ENV !== 'production' || process.env.DEBUG_ERRORS === '1';
   res.status(status).json({
     errorCode: String(status),
     errorDescription: err.expose ? err.message : 'Internal Server Error',
-    error: process.env.NODE_ENV === 'production' ? undefined : err.message,
+    error: showDetail ? err.message : undefined,
   });
 }
 

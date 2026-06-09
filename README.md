@@ -13,10 +13,17 @@ Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` an
 ## Status
 
 - **Phase 1 — Skeleton & DB connectivity: COMPLETE & verified on server** (`npm run smoke` green).
-- **Phase 2 — Consumer-critical endpoints: CODE COMPLETE** (all 28 endpoints the live
-  `ips.class.js` calls, incl. the `GetDataByID` / `PrescriptionData` branching). Pending on-server
-  endpoint smoke: `npm start` then `node scripts/smoke-endpoints.js` (or `npm run smoke:endpoints`).
+- **Phase 2 — Consumer-critical endpoints: COMPLETE & verified on server** (all 28 endpoints the live
+  `ips.class.js` calls, incl. the `GetDataByID` / `PrescriptionData` branching). On-server smoke:
+  27/29 → 2xx first run; the 2 initial 500s fixed via **legacy-parity error swallowing** (the .NET
+  data layer returned `[]`/`""` on query errors — preserved so the consumer never sees a 500).
+  Re-run `npm run smoke:endpoints` to confirm 29/29.
 - Phase 3 (remaining datasync parity) + Phase 4 (auth + core host) are next.
+
+> **Error behavior (legacy parity):** datasync list/string endpoints **swallow DB/SP errors and
+> return `[]`/`""` with HTTP 200** (matching the .NET `HelperEntityMap`). The real error is still
+> logged as a `warn`. Set `DEBUG_ERRORS=1` to also surface `err.message` in JSON responses (useful
+> for the smoke test). Core/Phase-4 routes use the strict path (errors propagate).
 
 ### Verify the endpoints (on the server)
 

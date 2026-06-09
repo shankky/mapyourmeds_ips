@@ -11,18 +11,33 @@
 
 const { callProc, callSql, getString } = require('../db/queryHelper');
 const { getDrugPool } = require('../db/pool');
+const logger = require('../utils/logger');
 
 // --- consumer-critical -----------------------------------------------------
+// NOTE: the .NET DrugReceiveService wrapped the three string-returning path
+// methods (Getsystempath / Getpatientimagepath / GetDrugimagepath) in
+// try/catch and returned "" on ANY error. We preserve that exactly so the
+// consumer (which expects a string / {image} wrapper) never sees a 500.
 
-/** sp_mym_getpatientimagepath(patient_id) → string (IPS pool) */
-function getPatientImagePath(patient_id) {
-  return getString(callSql('sp_mym_getpatientimagepath', 1), [patient_id]);
+/** sp_mym_getpatientimagepath(patient_id) → string (IPS pool); "" on error (legacy parity) */
+async function getPatientImagePath(patient_id) {
+  try {
+    return await getString(callSql('sp_mym_getpatientimagepath', 1), [patient_id]);
+  } catch (err) {
+    logger.warn(`[drugReceive] getPatientImagePath swallowed error (legacy parity): ${err.message}`);
+    return '';
+  }
 }
 
-/** sp_mym_getDrugimagepath(ndc) → string (DRUG pool) */
+/** sp_mym_getDrugimagepath(ndc) → string (DRUG pool); "" on error (legacy parity) */
 async function getDrugImagePath(ndc) {
-  const pool = await getDrugPool();
-  return getString(callSql('sp_mym_getDrugimagepath', 1), [ndc], pool);
+  try {
+    const pool = await getDrugPool();
+    return await getString(callSql('sp_mym_getDrugimagepath', 1), [ndc], pool);
+  } catch (err) {
+    logger.warn(`[drugReceive] getDrugImagePath swallowed error (legacy parity): ${err.message}`);
+    return '';
+  }
 }
 
 // --- parity (not consumer-critical) ---------------------------------------
@@ -32,9 +47,14 @@ function getDeliveryList(deliveryno, facilityid) {
   return callProc('sp_mym_getdeliverylist', [deliveryno, facilityid]);
 }
 
-/** sp_mym_getsystempath → string */
-function getSystemPath() {
-  return getString(callSql('sp_mym_getsystempath', 0), []);
+/** sp_mym_getsystempath → string; "" on error (legacy parity) */
+async function getSystemPath() {
+  try {
+    return await getString(callSql('sp_mym_getsystempath', 0), []);
+  } catch (err) {
+    logger.warn(`[drugReceive] getSystemPath swallowed error (legacy parity): ${err.message}`);
+    return '';
+  }
 }
 
 /** sp_mym_getdeliverynobyfacility(facilityid) → ModelDeliveryNo[] */

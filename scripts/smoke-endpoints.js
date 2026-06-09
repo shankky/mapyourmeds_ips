@@ -95,7 +95,11 @@ function summarize(body) {
     const j = JSON.parse(body);
     if (Array.isArray(j)) return `array[${j.length}]` + (j[0] ? ` keys=${Object.keys(j[0]).slice(0, 6).join(',')}` : '');
     if (j && typeof j === 'object') {
-      if (j.errorCode) return `ERR ${j.errorCode}: ${String(j.errorDescription).slice(0, 60)}`;
+      if (j.errorCode) {
+        // Show full detail for failures (error field is set when NODE_ENV != production).
+        const detail = j.error || j.errorDescription || '';
+        return `ERR ${j.errorCode}: ${detail}`;
+      }
       return `object keys=${Object.keys(j).slice(0, 6).join(',')}`;
     }
     return `scalar ${JSON.stringify(j)}`;
