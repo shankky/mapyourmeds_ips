@@ -10,6 +10,8 @@
     "smoke:endpoints": "node ./scripts/smoke-endpoints.js",
     "deploy:gate": "node ./scripts/deploy-gate.js",
     "lint:db": "node ./scripts/check-db-access.js",
+    "parity": "node ./scripts/parity-check.js",
+    "parity:capture": "node ./scripts/parity-capture.js",
     "routes": "node ./scripts/list-routes.js",
     "test": "echo \"no tests yet\" && exit 0"
   },

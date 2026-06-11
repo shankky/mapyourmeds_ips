@@ -5,3 +5,7 @@ npm-debug.log*
 build/
 .DS_Store
 ips_node.zip
+
+# Parity check output — may contain PHI (real patient/prescription data). Never commit.
+parity/baseline/
+parity/report.json

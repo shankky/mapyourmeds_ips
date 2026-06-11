@@ -10,17 +10,19 @@
  */
 
 const { callProc, callSql, recordExists } = require('../db/queryHelper');
+const { mapRows } = require('../mappers/dtoMapper');
+const S = require('../mappers/schemas');
 
 // --- Patients (consumer-critical) -----------------------------------------
 
 /** sp_mym_getpatientdatafacilityid(external_facility_id) → ImportPatientTask[] */
-function getPatientByFacility(external_facility_id) {
-  return callProc('sp_mym_getpatientdatafacilityid', [external_facility_id]);
+async function getPatientByFacility(external_facility_id) {
+  return mapRows(await callProc('sp_mym_getpatientdatafacilityid', [external_facility_id]), S.ImportPatientTask);
 }
 
 /** sp_mym_getpatientdatatask(firstname, lastname) → ImportPatientTask[] */
-function getPatientData(firstname, lastname) {
-  return callProc('sp_mym_getpatientdatatask', [firstname, lastname]);
+async function getPatientData(firstname, lastname) {
+  return mapRows(await callProc('sp_mym_getpatientdatatask', [firstname, lastname]), S.ImportPatientTask);
 }
 
 // --- Workflow status (consumer-critical) ----------------------------------
@@ -47,13 +49,13 @@ function pvOneStepOneStatusByRxNumber(Rxnumber, Createddate) {
 }
 
 /** sp_mym_getstatuspvonesteptwobyrxnumber(Rxnumber, Createddate) → PvoneSteptwo[] */
-function pvOneStepTwoStatusByRxNumber(Rxnumber, Createddate) {
-  return callProc('sp_mym_getstatuspvonesteptwobyrxnumber', [Rxnumber, Createddate]);
+async function pvOneStepTwoStatusByRxNumber(Rxnumber, Createddate) {
+  return mapRows(await callProc('sp_mym_getstatuspvonesteptwobyrxnumber', [Rxnumber, Createddate]), S.PvoneSteptwo);
 }
 
-/** sp_mym_getdeliverybypatient(Patient_id) → PatientDelivery[] */
-function deliveryByPatient(Patient_id) {
-  return callProc('sp_mym_getdeliverybypatient', [Patient_id]);
+/** sp_mym_getdeliverybypatient(Patient_id) → TransactionHistory[] (PatientDelivery == TransactionHistory shape) */
+async function deliveryByPatient(Patient_id) {
+  return mapRows(await callProc('sp_mym_getdeliverybypatient', [Patient_id]), S.TransactionHistory);
 }
 
 module.exports = {

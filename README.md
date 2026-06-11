@@ -7,6 +7,9 @@ HTTP contract the existing consumer (`mym/config/ips.class.js`) depends on.
 > **Runs on the client's on-prem server only** — that's the only place the SQL
 > Anywhere database / ODBC DSN is reachable. It cannot run in the dev environment.
 
+Deployed: **Express (new)** `http://ipsnode.mapyourmedsapi.com/` · **.NET (old)** `https://mymsync.mapyourmedsapi.com:5003`.
+Contract-parity check (Express vs .NET): see `parity/README.md` and `npm run parity`.
+
 Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` and the
 `memory-bank/` in the source repo (`d:\aws_repos\ips_mainNew`).
 

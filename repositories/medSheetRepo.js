@@ -6,10 +6,12 @@
  */
 
 const { callProc, callSql, getString } = require('../db/queryHelper');
+const { mapRows } = require('../mappers/dtoMapper');
+const S = require('../mappers/schemas');
 
 /** sp_mym_getemedpassdata(date) → PatientMedPassModel[] (consumer-critical) */
-function getEMedPassData(date) {
-  return callProc('sp_mym_getemedpassdata', [date]);
+async function getEMedPassData(date) {
+  return mapRows(await callProc('sp_mym_getemedpassdata', [date]), S.PatientMedPassModel);
 }
 
 // --- parity (not consumer-critical) ---------------------------------------

@@ -6,15 +6,17 @@
  */
 
 const { callProc } = require('../db/queryHelper');
+const { mapRows } = require('../mappers/dtoMapper');
+const S = require('../mappers/schemas');
 
 /** sp_mym_getcyclerx_status → ModelCycleStatus[] (consumer-critical) */
-function getCycleRxStatus() {
-  return callProc('sp_mym_getcyclerx_status', []);
+async function getCycleRxStatus() {
+  return mapRows(await callProc('sp_mym_getcyclerx_status', []), S.ModelCycleStatus);
 }
 
 /** sp_mym_getcycle_inhospital → ModelHospitalPatientDrugDetail[] (consumer-critical) */
-function getCycleInhospital() {
-  return callProc('sp_mym_getcycle_inhospital', []);
+async function getCycleInhospital() {
+  return mapRows(await callProc('sp_mym_getcycle_inhospital', []), S.ModelHospitalPatientDrugDetail);
 }
 
 // --- parity (not consumer-critical) ---------------------------------------

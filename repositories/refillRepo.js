@@ -6,10 +6,12 @@
  */
 
 const { callProc } = require('../db/queryHelper');
+const { mapRows } = require('../mappers/dtoMapper');
+const S = require('../mappers/schemas');
 
 /** sp_mym_getweeklyrefillreminder → ModelGetWeeklyRefillReminder[] (consumer-critical) */
-function getWeeklyRefillReminder() {
-  return callProc('sp_mym_getweeklyrefillreminder', []);
+async function getWeeklyRefillReminder() {
+  return mapRows(await callProc('sp_mym_getweeklyrefillreminder', []), S.ModelGetWeeklyRefillReminder);
 }
 
 // --- parity (not consumer-critical) ---------------------------------------
