@@ -19,10 +19,32 @@ Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` an
   layer returned `[]`/`""` on query errors — preserved so the consumer never sees a 500).
 - Phase 4 (auth + core host) is next; Phase 3 (remaining datasync parity) mostly already coded.
 
-> **Error behavior (legacy parity):** datasync list/string endpoints **swallow DB/SP errors and
-> return `[]`/`""` with HTTP 200** (matching the .NET `HelperEntityMap`). The real error is still
-> logged as a `warn`. Set `DEBUG_ERRORS=1` to also surface `err.message` in JSON responses (useful
-> for the smoke test). Core/Phase-4 routes use the strict path (errors propagate).
+> **Error behavior (legacy parity + hardening):** datasync list/string endpoints **swallow DB/SP
+> errors and return `[]`/`""` with HTTP 200** (matching the .NET `HelperEntityMap`) so the consumer
+> never sees a 500. Because that can hide a real failure as "no data", every swallow is now
+> **logged at ERROR level and counted** (see Operations below). Core/Phase-4 routes use the strict
+> path (errors propagate). `DEBUG_ERRORS=1` surfaces `err.message` in JSON responses.
+
+## Operations / production hardening
+
+This is a prod-critical pharmacy API. Anti-silent-failure safeguards:
+
+- **Startup self-test** — on boot the server runs `SELECT 1` + a canonical stored proc through the
+  live code path. With `STARTUP_DB_FAIL_FAST=1` (default in production) it **refuses to start** if
+  the DB is unreachable, instead of silently serving empty data.
+- **`GET /health/deep`** — real DB query + swallowed-error stats; returns **503** when degraded or if
+  any DB error has been swallowed since boot. **Point the load balancer health probe here**
+  (`/health` is liveness-only, no DB).
+- **Swallowed-error tracking** — every swallowed DB error is logged at ERROR level with full context
+  and counted; the running total + recent failures show in `/health/deep` and the `/` dashboard.
+- **`npm run lint:db`** — guard that fails if any raw `pool.query`/`odbc.connect` exists outside
+  `db/queryHelper.js` (the one sanctioned DB path). Wire into CI.
+- **`npm run deploy:gate`** — final pre-traffic check on the server: `/health/deep` healthy →
+  all endpoints 2xx → swallowed-error count did not rise during the smoke. Wire into the deploy
+  pipeline (run after `npm start`).
+
+**Env flags:** `STARTUP_DB_SELFTEST` (1), `STARTUP_DB_FAIL_FAST` (prod=1), `STARTUP_SELFTEST_SP`
+(`sp_mym_getfacilitygroup`), `DEBUG_ERRORS` (0). See `.env.example`.
 
 ### Verify the endpoints (on the server)
 

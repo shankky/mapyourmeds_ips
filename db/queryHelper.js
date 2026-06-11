@@ -19,6 +19,49 @@
 const { getPool } = require('./pool');
 const logger = require('../utils/logger');
 
+/**
+ * Swallowed-error registry (H1/H5 hardening).
+ *
+ * The datasync layer preserves the legacy .NET behavior of returning []/"" on a
+ * DB/SP error (so the consumer never sees a 500). That is a SILENT-FAILURE risk
+ * in a prod pharmacy system: a broken query looks identical to "no data". To
+ * make it observable we:
+ *   - log every swallowed error at ERROR level (not warn) with full context,
+ *   - keep a rolling count + the most-recent failures so /health/deep and any
+ *     monitor can SEE that the system is degraded even while returning 200s.
+ */
+const swallowedErrors = {
+  total: 0,
+  recent: [], // newest first, capped
+};
+const SWALLOW_RECENT_CAP = 50;
+
+function recordSwallowed(context, sql, params, err) {
+  swallowedErrors.total += 1;
+  const entry = {
+    at: new Date().toISOString(),
+    context,
+    sql,
+    params,
+    message: err && err.message ? err.message : String(err),
+  };
+  swallowedErrors.recent.unshift(entry);
+  if (swallowedErrors.recent.length > SWALLOW_RECENT_CAP) swallowedErrors.recent.length = SWALLOW_RECENT_CAP;
+  // ERROR level — a swallowed DB error in prod is a real incident, not a warning.
+  logger.error(`[db] SWALLOWED ${context}: ${entry.message} :: ${sql} :: params=${JSON.stringify(params)}`);
+}
+
+/** Snapshot of swallowed-error stats (for /health/deep + metrics). */
+function getSwallowedErrorStats() {
+  return { total: swallowedErrors.total, recent: swallowedErrors.recent.slice(0, 10) };
+}
+
+/** Reset counters (tests / after an alert is acknowledged). */
+function resetSwallowedErrorStats() {
+  swallowedErrors.total = 0;
+  swallowedErrors.recent = [];
+}
+
 /** Normalize an odbc result (array + metadata) into a plain row array. */
 function toRows(result) {
   if (!result) return [];
@@ -68,7 +111,9 @@ async function executeQuerySafe(sql, params = [], pool = null) {
   try {
     return await executeQuery(sql, params, pool);
   } catch (err) {
-    logger.warn(`[db] executeQuerySafe swallowed (legacy parity): ${err.message} :: ${sql}`);
+    // Legacy parity: return [] so the consumer never sees a 500. But this is a
+    // real failure — record + log it loudly (H1/H5) so it is never invisible.
+    recordSwallowed('executeQuerySafe', sql, params, err);
     return [];
   }
 }
@@ -149,10 +194,12 @@ async function checkConnection() {
     return finalize(checks, started); // can't go further without a pool
   }
 
-  // 2) SELECT 1
+  // 2) SELECT 1 — go through executeQuery (same path as every working endpoint).
+  // NOTE: call pool.query with an explicit params array ([]); the SQL Anywhere
+  // ODBC driver errors on a bare query(sql) with no params arg.
   t = Date.now();
   try {
-    const rows = await pool.query('SELECT 1 AS ok');
+    const rows = await executeQuery('SELECT 1 AS ok', [], pool);
     checks.select1.ok = Array.isArray(rows) && rows.length > 0;
     checks.select1.ms = Date.now() - t;
     if (!checks.select1.ok) checks.select1.detail = 'no rows returned';
@@ -164,7 +211,7 @@ async function checkConnection() {
   // 3) real table read (basic syntax + execution, like the scaffold sample)
   t = Date.now();
   try {
-    const rows = await pool.query('SELECT TOP 5 * FROM dba.facility_fill_type');
+    const rows = await executeQuery('SELECT TOP 5 * FROM dba.facility_fill_type', [], pool);
     checks.tableRead.ok = Array.isArray(rows);
     checks.tableRead.ms = Date.now() - t;
     checks.tableRead.rowCount = Array.isArray(rows) ? rows.length : null;
@@ -178,7 +225,13 @@ async function checkConnection() {
 
 function finalize(checks, started) {
   const ok = Object.values(checks).every((c) => c.ok);
-  return { ok, checks, totalMs: Date.now() - started, checkedAt: new Date().toISOString() };
+  return {
+    ok,
+    checks,
+    swallowedErrors: getSwallowedErrorStats(),
+    totalMs: Date.now() - started,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 module.exports = {
@@ -191,4 +244,7 @@ module.exports = {
   recordExists,
   recordGtZero,
   checkConnection,
+  getSwallowedErrorStats,
+  resetSwallowedErrorStats,
+  recordSwallowed,
 };

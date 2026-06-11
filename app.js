@@ -51,6 +51,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', env: config.env, time: new Date().toISOString() });
 });
 
+// --- Deep health check (real DB query + swallowed-error stats) -------------
+// For load balancers / monitors that must know the DB is actually usable, not
+// just that the process is alive. 503 when degraded OR when swallowed DB errors
+// have occurred since boot (silent failures are surfaced here). (H3/H5)
+app.get('/health/deep', async (req, res) => {
+  const { checkConnection } = require('./db/queryHelper');
+  const status = await checkConnection();
+  const hasSwallowed = status.swallowedErrors && status.swallowedErrors.total > 0;
+  const healthy = status.ok && !hasSwallowed;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    ...status,
+  });
+});
+
 // --- Status dashboard at / (live DB connectivity + execution check) --------
 app.use('/', statusRouter);
 

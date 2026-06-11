@@ -8,10 +8,8 @@ var app = require('../app');
 var debug = require('debug')('mapyourmeds-ips:server');
 var http = require('http');
 var { initPools, closePools } = require('../db/pool');
+var { startupSelfTest } = require('../db/selfTest');
 var logger = require('../utils/logger');
-
-// Warm the ODBC pool(s) at boot (non-fatal on failure — retried on first query).
-initPools();
 
 // Graceful shutdown: close pools before exit.
 function shutdown(signal) {
@@ -35,12 +33,22 @@ app.set('port', port);
 var server = http.createServer(app);
 
 /**
- * Listen on provided port, on all network interfaces.
+ * Bootstrap: warm the pool, run the startup DB self-test (H2 — in fail-fast
+ * mode a degraded DB exits the process instead of silently serving empty data),
+ * then start listening.
  */
+async function bootstrap() {
+  await initPools();
+  await startupSelfTest(); // may process.exit(1) in fail-fast mode
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+}
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+bootstrap().catch(function (err) {
+  logger.error('[server] bootstrap failed: ' + (err && err.message));
+  process.exit(1);
+});
 
 /**
  * Normalize a port into a number, string, or false.

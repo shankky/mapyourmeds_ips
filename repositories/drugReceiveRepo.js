@@ -9,22 +9,23 @@
  * is configured separately.
  */
 
-const { callProc, callSql, getString } = require('../db/queryHelper');
+const { callProc, callSql, getString, recordSwallowed } = require('../db/queryHelper');
 const { getDrugPool } = require('../db/pool');
-const logger = require('../utils/logger');
 
 // --- consumer-critical -----------------------------------------------------
 // NOTE: the .NET DrugReceiveService wrapped the three string-returning path
 // methods (Getsystempath / Getpatientimagepath / GetDrugimagepath) in
-// try/catch and returned "" on ANY error. We preserve that exactly so the
-// consumer (which expects a string / {image} wrapper) never sees a 500.
+// try/catch and returned "" on ANY error. We preserve that for the consumer
+// (which expects a string / {image} wrapper) but record every swallow loudly
+// (H1/H5) so a failure is never invisible. (getString itself also swallows via
+// executeQuerySafe; these catches cover pool-acquisition errors too.)
 
 /** sp_mym_getpatientimagepath(patient_id) → string (IPS pool); "" on error (legacy parity) */
 async function getPatientImagePath(patient_id) {
   try {
     return await getString(callSql('sp_mym_getpatientimagepath', 1), [patient_id]);
   } catch (err) {
-    logger.warn(`[drugReceive] getPatientImagePath swallowed error (legacy parity): ${err.message}`);
+    recordSwallowed('getPatientImagePath', 'sp_mym_getpatientimagepath', [patient_id], err);
     return '';
   }
 }
@@ -35,7 +36,7 @@ async function getDrugImagePath(ndc) {
     const pool = await getDrugPool();
     return await getString(callSql('sp_mym_getDrugimagepath', 1), [ndc], pool);
   } catch (err) {
-    logger.warn(`[drugReceive] getDrugImagePath swallowed error (legacy parity): ${err.message}`);
+    recordSwallowed('getDrugImagePath', 'sp_mym_getDrugimagepath', [ndc], err);
     return '';
   }
 }
@@ -52,7 +53,7 @@ async function getSystemPath() {
   try {
     return await getString(callSql('sp_mym_getsystempath', 0), []);
   } catch (err) {
-    logger.warn(`[drugReceive] getSystemPath swallowed error (legacy parity): ${err.message}`);
+    recordSwallowed('getSystemPath', 'sp_mym_getsystempath', [], err);
     return '';
   }
 }

@@ -8,6 +8,8 @@
     "dev": "node ./bin/www",
     "smoke": "node ./scripts/smoke-test.js",
     "smoke:endpoints": "node ./scripts/smoke-endpoints.js",
+    "deploy:gate": "node ./scripts/deploy-gate.js",
+    "lint:db": "node ./scripts/check-db-access.js",
     "routes": "node ./scripts/list-routes.js",
     "test": "echo \"no tests yet\" && exit 0"
   },
