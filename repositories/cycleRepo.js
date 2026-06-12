@@ -5,16 +5,23 @@
  * (MetizDatasyncAPI CycleController surface).
  */
 
-const { callProc } = require('../db/queryHelper');
+const { callProc, callProcLarge } = require('../db/queryHelper');
 const { mapRows } = require('../mappers/dtoMapper');
 const S = require('../mappers/schemas');
 
-/** sp_mym_getcyclerx_status → ModelCycleStatus[] (consumer-critical) */
+/**
+ * sp_mym_getcyclerx_status → ModelCycleStatus[] (consumer-critical).
+ * LARGE result set (~15 MB / ~20k rows) — the default buffered odbc fetch fails
+ * with "Error allocating memory when fetching data", so use the cursor-based
+ * (paged) fetch. See db/queryHelper executeQueryLarge.
+ */
 async function getCycleRxStatus() {
-  return mapRows(await callProc('sp_mym_getcyclerx_status', []), S.ModelCycleStatus);
+  return mapRows(await callProcLarge('sp_mym_getcyclerx_status', []), S.ModelCycleStatus);
 }
 
-/** sp_mym_getcycle_inhospital → ModelHospitalPatientDrugDetail[] (consumer-critical) */
+/** sp_mym_getcycle_inhospital → ModelHospitalPatientDrugDetail[] (consumer-critical).
+ *  Worked with buffered fetch in parity; kept on regular callProc. Switch to
+ *  callProcLarge if it ever hits the memory error on larger data. */
 async function getCycleInhospital() {
   return mapRows(await callProc('sp_mym_getcycle_inhospital', []), S.ModelHospitalPatientDrugDetail);
 }

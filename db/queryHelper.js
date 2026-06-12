@@ -87,6 +87,71 @@ async function executeQuery(sql, params = [], pool = null) {
   }
 }
 
+/** Default batch size for cursor fetches (rows per fetch). Tunable via env. */
+const CURSOR_FETCH_SIZE = parseInt(process.env.DB_CURSOR_FETCH_SIZE || '500', 10);
+
+/**
+ * Cursor-based execution for LARGE result sets. The default odbc buffered
+ * `query()` loads the entire result into memory at once, which fails with
+ * "[odbc] Error allocating or reallocating memory when fetching data" on big
+ * result sets (e.g. sp_mym_getcyclerx_status ≈ 15 MB / ~20k rows). This pages
+ * through the result in batches via an odbc cursor and accumulates rows, so the
+ * driver never allocates one giant buffer. Returns the same full array shape.
+ *
+ * Acquires a dedicated pooled connection (a cursor holds its connection open
+ * until closed), and always releases it.
+ *
+ * @param {string} sql
+ * @param {Array}  params
+ * @param {object} pool   odbc pool (defaults to IPS)
+ * @param {number} fetchSize rows per batch
+ * @returns {Promise<Array<object>>}
+ */
+async function executeQueryLarge(sql, params = [], pool = null, fetchSize = CURSOR_FETCH_SIZE) {
+  const activePool = pool || (await getPool());
+  let connection;
+  let cursor;
+  try {
+    connection = await activePool.connect();
+    cursor = await connection.query(sql, params, { cursor: true, fetchSize });
+    const all = [];
+    // Fetch batches until the cursor reports no more data.
+    // (cursor.fetch() returns an array-like batch; noData flips true at the end.)
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await cursor.fetch();
+      const rows = toRows(batch);
+      if (rows.length) all.push(...rows);
+      if (cursor.noData || rows.length === 0) break;
+    }
+    return all;
+  } catch (err) {
+    logger.error(`[db] executeQueryLarge failed: ${err.message} :: ${sql} :: params=${JSON.stringify(params)}`);
+    throw err;
+  } finally {
+    try { if (cursor) await cursor.close(); } catch (e) { /* ignore */ }
+    try { if (connection) await connection.close(); } catch (e) { /* ignore */ } // returns conn to pool
+  }
+}
+
+/** LEGACY-PARITY (swallow→[]) variant of executeQueryLarge. */
+async function executeQueryLargeSafe(sql, params = [], pool = null, fetchSize = CURSOR_FETCH_SIZE) {
+  try {
+    return await executeQueryLarge(sql, params, pool, fetchSize);
+  } catch (err) {
+    recordSwallowed('executeQueryLargeSafe', sql, params, err);
+    return [];
+  }
+}
+
+/** Cursor-based stored-proc call (swallow→[] by default, like callProc). */
+async function callProcLarge(spName, params = [], pool = null, opts = {}) {
+  const sql = callSql(spName, params.length);
+  return opts.strict
+    ? executeQueryLarge(sql, params, pool)
+    : executeQueryLargeSafe(sql, params, pool);
+}
+
 /**
  * Build a `CALL sp(?, ?, ...)` string for N params. Helper so repositories
  * never hand-build placeholder lists.
@@ -237,7 +302,10 @@ function finalize(checks, started) {
 module.exports = {
   executeQuery,
   executeQuerySafe,
+  executeQueryLarge,
+  executeQueryLargeSafe,
   callProc,
+  callProcLarge,
   callSql,
   getString,
   getSpecificColumn,
