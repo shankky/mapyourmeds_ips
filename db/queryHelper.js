@@ -87,8 +87,14 @@ async function executeQuery(sql, params = [], pool = null) {
   }
 }
 
-/** Default batch size for cursor fetches (rows per fetch). Tunable via env. */
-const CURSOR_FETCH_SIZE = parseInt(process.env.DB_CURSOR_FETCH_SIZE || '500', 10);
+/**
+ * Default batch size for cursor fetches (rows per fetch). Tunable via env.
+ * Larger = fewer round-trips (faster) but more memory per batch. 5000 is a
+ * balance for the large IPS result sets (up to ~70 MB / tens of thousands of
+ * rows) — well under the single-buffer limit that fails buffered query(), while
+ * keeping round-trips low so slow endpoints finish within the proxy timeout.
+ */
+const CURSOR_FETCH_SIZE = parseInt(process.env.DB_CURSOR_FETCH_SIZE || '5000', 10);
 
 /**
  * Cursor-based execution for LARGE result sets. The default odbc buffered

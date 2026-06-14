@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SAMPLE IIS site web.config for the IPS reverse proxy (IIS -> PM2/Node :3000).
+  This is a REFERENCE. Prefer editing the real server web.config (drop it at
+  iis/web.config and it'll be edited in place). Apply the ARR server-proxy
+  timeout separately (server node, not site) — see iis/README.md #1.
+
+  Goal: allow long-running (~120s+) and large (~70 MB) proxied responses.
+-->
+<configuration>
+  <system.web>
+    <!-- Classic ASP.NET request timeout (seconds). Raise for slow endpoints. -->
+    <httpRuntime executionTimeout="600" maxRequestLength="102400" targetFramework="4.5" />
+  </system.web>
+
+  <system.webServer>
+    <security>
+      <requestFiltering>
+        <!-- Allow large request/response bodies. 104857600 = 100 MB (> the ~70 MB max). -->
+        <requestLimits maxAllowedContentLength="104857600" />
+      </requestFiltering>
+    </security>
+
+    <!-- Reverse-proxy to the Node app on :3000. Keep your EXISTING rule if present;
+         this is the typical shape. The proxy TIMEOUT is set at the server level
+         (ARR Server Proxy Settings / appcmd), NOT here — see README #1. -->
+    <rewrite>
+      <rules>
+        <rule name="ReverseProxyToNode" stopProcessing="true">
+          <match url="(.*)" />
+          <action type="Rewrite" url="http://localhost:3000/{R:1}" />
+        </rule>
+      </rules>
+    </rewrite>
+
+    <!-- Optional: don't let IIS buffer huge responses to disk in a way that stalls.
+         responseBufferLimit 0 = stream through (good for 70 MB). Applies to handlers
+         that honor it; ARR streaming is the main path. -->
+
+    <httpProtocol>
+      <customHeaders>
+        <!-- (CORS is handled by the Node app; leave to Express unless duplicated.) -->
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+</configuration>

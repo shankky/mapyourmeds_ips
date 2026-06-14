@@ -33,6 +33,24 @@ app.set('port', port);
 var server = http.createServer(app);
 
 /**
+ * Long-running / large-response support. Some IPS stored procs are slow and
+ * return very large payloads (observed ~120s, up to ~70 MB). Node's default
+ * header/keepalive timeouts would cut these off, so raise them. Configurable
+ * via env (ms); defaults give generous headroom for the slowest endpoints.
+ *  - requestTimeout:   max time for the whole request (0 = unlimited)
+ *  - headersTimeout:   must exceed requestTimeout/keepAliveTimeout
+ *  - keepAliveTimeout: keep sockets open between the proxy (IIS) and Node
+ * NOTE: the IIS reverse proxy in front of this also has its own timeout —
+ * it MUST be raised too (see iis/web.config in the repo). The smallest timeout
+ * in the chain wins.
+ */
+var SERVER_TIMEOUT_MS = parseInt(process.env.SERVER_TIMEOUT_MS || '300000', 10); // 5 min
+server.requestTimeout = parseInt(process.env.REQUEST_TIMEOUT_MS || '0', 10); // 0 = no limit
+server.timeout = SERVER_TIMEOUT_MS;
+server.keepAliveTimeout = parseInt(process.env.KEEPALIVE_TIMEOUT_MS || '310000', 10); // > proxy idle
+server.headersTimeout = parseInt(process.env.HEADERS_TIMEOUT_MS || '320000', 10); // > keepAliveTimeout
+
+/**
  * Bootstrap: warm the pool, run the startup DB self-test (H2 — in fail-fast
  * mode a degraded DB exits the process instead of silently serving empty data),
  * then start listening.
