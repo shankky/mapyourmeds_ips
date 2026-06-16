@@ -89,12 +89,20 @@ async function executeQuery(sql, params = [], pool = null) {
 
 /**
  * Default batch size for cursor fetches (rows per fetch). Tunable via env.
- * Larger = fewer round-trips (faster) but more memory per batch. 5000 is a
- * balance for the large IPS result sets (up to ~70 MB / tens of thousands of
- * rows) — well under the single-buffer limit that fails buffered query(), while
- * keeping round-trips low so slow endpoints finish within the proxy timeout.
+ *
+ * MUST default to 1 for SQL Anywhere CALL result sets. Diagnostics on
+ * sp_mym_getcyclerx_status (~33,500 rows / ~15 MB) showed:
+ *   - buffered query()        -> "Error allocating memory" (even at 4 GB heap)
+ *   - cursor fetchSize=1      -> OK, 33,545 rows
+ *   - cursor fetchSize=100/500 -> "Error fetching results with SQLFetch"
+ * i.e. the SQL Anywhere ODBC driver only supports SINGLE-ROW fetches on these
+ * stored-proc result sets; any block fetch (>1) or full buffer fails. So we page
+ * one row at a time. Slower (one round-trip per row; ~67s for 33k rows) but it is
+ * the ONLY mode that returns the data, and it stays within the raised Node/IIS
+ * timeouts. Do NOT raise this above 1 unless a specific SP is proven to support
+ * block fetches.
  */
-const CURSOR_FETCH_SIZE = parseInt(process.env.DB_CURSOR_FETCH_SIZE || '5000', 10);
+const CURSOR_FETCH_SIZE = parseInt(process.env.DB_CURSOR_FETCH_SIZE || '1', 10);
 
 /**
  * Cursor-based execution for LARGE result sets. The default odbc buffered
