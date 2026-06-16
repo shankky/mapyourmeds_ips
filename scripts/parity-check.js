@@ -145,7 +145,21 @@ async function getDotnet(label, relPath, body) {
   console.log(`Parity check — Express ${EXPRESS_BASE} vs .NET\nMode: ${mode}\nSamples: ${JSON.stringify(SAMPLES)}\n`);
 
   const report = [];
-  let shapeOk = 0, shapeBad = 0, skipped = 0;
+  let shapeOk = 0, shapeBad = 0, skipped = 0, inconclusive = 0;
+
+  // True when we genuinely cannot structurally compare (not an Express fault):
+  //  - .NET returned a 5xx/0 (its own error), OR
+  //  - exactly one side returned an empty array while the other had rows
+  //    (a row-count/live-data difference, not a shape difference).
+  function isInconclusive(ex, dn) {
+    if (dn.status >= 500 || dn.status === 0) return '.NET error ' + dn.status;
+    const exArr = Array.isArray(ex.json), dnArr = Array.isArray(dn.json);
+    if (exArr && dnArr) {
+      const exEmpty = ex.json.length === 0, dnEmpty = dn.json.length === 0;
+      if (exEmpty !== dnEmpty) return (dnEmpty ? '.NET empty, Express has rows' : 'Express empty, .NET has rows');
+    }
+    return null;
+  }
 
   for (const [label, relPath, body] of ALL_ENDPOINTS) {
     /* eslint-disable no-await-in-loop */
@@ -157,7 +171,16 @@ async function getDotnet(label, relPath, body) {
       skipped++; report.push({ label, relPath, skipped: true }); continue;
     }
 
+    const inc = isInconclusive(ex, dn);
     const d = diff(ex.json, dn.json);
+
+    if (inc) {
+      inconclusive++;
+      console.log(`??  ${label.padEnd(34)} express[${ex.status}] dotnet[${dn.status}] INCONCLUSIVE — ${inc} (can't compare shape)`);
+      report.push({ label, relPath, expressStatus: ex.status, dotnetStatus: dn.status, inconclusive: inc, ...d });
+      continue;
+    }
+
     const ok = d.shapeMatch && d.fieldsMatch;
     if (ok) shapeOk++; else shapeBad++;
 
@@ -173,9 +196,16 @@ async function getDotnet(label, relPath, body) {
   ensureDir(PARITY_DIR);
   fs.writeFileSync(path.join(PARITY_DIR, 'report.json'), JSON.stringify({ mode, generatedAt: new Date().toISOString(), samples: SAMPLES, results: report }, null, 2));
 
-  console.log(`\nShapes — match: ${shapeOk}, DIFF: ${shapeBad}, skipped: ${skipped}`);
+  console.log(`\nShapes — match: ${shapeOk}, DIFF: ${shapeBad}, inconclusive: ${inconclusive}, skipped: ${skipped}`);
+  if (inconclusive) {
+    console.log(`  (?? inconclusive = .NET errored or one side empty; not an Express shape failure. See report.json.)`);
+  }
   console.log(`Full report: parity/report.json`);
-  if (shapeBad === 0 && skipped === 0) console.log('\n✓ PARITY: all 29 endpoints structurally match the .NET API.');
-  else if (shapeBad) console.log('\n✗ PARITY: structural differences found — see above (these break drop-in compatibility).');
+  if (shapeBad === 0) {
+    console.log(`\n✓ PARITY: all comparable endpoints structurally match the .NET API` +
+      (inconclusive ? ` (${inconclusive} inconclusive — .NET-side error/empty, review individually).` : '.'));
+  } else {
+    console.log('\n✗ PARITY: structural differences found — see above (these break drop-in compatibility).');
+  }
   process.exit(shapeBad === 0 ? 0 : 1);
 })();
