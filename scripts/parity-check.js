@@ -78,21 +78,43 @@ function postJson(base, relPath, body) {
   });
 }
 
-/** Structural signature of a value: types + sorted keys, recursive, order-independent for arrays (uses first element). */
+/**
+ * Structural signature of a value: keys only (NOT value types), recursive.
+ * IMPORTANT: we deliberately ignore scalar types. On live data a given column
+ * can be a string in one row and null in another, which would otherwise make
+ * the signature flip run-to-run (false DIFF). Field NAMES are the real
+ * structural contract; types vary per-row and are not a compatibility concern.
+ * For arrays we UNION keys across ALL elements (not just element 0) so a field
+ * that's null/absent in the first row but present in others still counts.
+ */
 function shapeOf(v) {
-  if (v === null) return 'null';
-  if (Array.isArray(v)) return v.length ? `array<${shapeOf(v[0])}>` : 'array<empty>';
-  if (typeof v === 'object') {
-    const keys = Object.keys(v).sort();
-    return '{' + keys.map((k) => `${k}:${shapeOf(v[k])}`).join(',') + '}';
+  if (v === null || v === undefined) return '*';
+  if (Array.isArray(v)) {
+    if (!v.length) return 'array<empty>';
+    // merge the key-shape of every element
+    const merged = {};
+    for (const el of v) {
+      if (el && typeof el === 'object' && !Array.isArray(el)) {
+        for (const k of Object.keys(el)) {
+          if (!(k in merged)) merged[k] = shapeOf(el[k]);
+        }
+      } else {
+        return `array<${shapeOf(el)}>`; // array of scalars
+      }
+    }
+    const keys = Object.keys(merged).sort();
+    return `array<{${keys.join(',')}}>`;
   }
-  return typeof v; // string | number | boolean
+  if (typeof v === 'object') {
+    return '{' + Object.keys(v).sort().join(',') + '}';
+  }
+  return 'scalar';
 }
 
-/** Field-name set (recursive, for object/array-of-object) — casing-sensitive. */
+/** Field-name set (recursive). Unions keys across ALL array elements (casing-sensitive). */
 function fieldSet(v, prefix, out) {
   out = out || new Set();
-  if (Array.isArray(v)) { if (v.length) fieldSet(v[0], prefix, out); return out; }
+  if (Array.isArray(v)) { for (const el of v) fieldSet(el, prefix, out); return out; }
   if (v && typeof v === 'object') {
     for (const k of Object.keys(v)) { out.add(prefix ? prefix + '.' + k : k); fieldSet(v[k], prefix ? prefix + '.' + k : k, out); }
   }
