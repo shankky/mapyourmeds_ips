@@ -69,4 +69,28 @@ const ENDPOINTS = [
   ['getDrugImagePath', `DrugReceive/GetDrugimagepath?ndc=${q(S.ndc)}`, {}],
 ];
 
-module.exports = { ENDPOINTS, SAMPLES: S };
+// Phase 3 parity endpoints (NOT called by the consumer; full datasync-host parity).
+// Kept separate so the consumer smoke set stays exactly the 29 above.
+const lastdate = process.env.SMK_LASTDATE || '2024-01-01';
+const office = process.env.SMK_OFFICE || S.groupId;
+const PARITY_EXTRA = [
+  ['accountStatement', 'Account/GetPatientStatementPelham', {
+    ad_from: S.startDate, ad_to: S.endDate, as_type: '', ae_account: '', as_start: '', as_end: '',
+    ae_over30: '', ae_over60: '', ae_over90: '', as_autopost: '', ae_office_id: office, as_store: '',
+    as_note: '', active_account: '', zero_copay: '', as_note1: '', as_note2: '', as_note3: '',
+    as_openqueue: '', as_showfacility: '', as_method: '', as_zerocharges: '',
+  }],
+  ['updatedRxByFacility', 'PrescriptionData/GetUpdatedPrescriptionDataFacility', { groupid: S.groupId, facid: S.facilityId, lastdate: S.date }],
+  ['rxByPatient', `PrescriptionData/GetPrescriptionDataByPatient?patient_id=${q(S.patientId)}`, {}],
+  ['rxMobileByPatient', `PrescriptionData/GetPrescriptionDataForMobileByPatient?patient_id=${q(S.patientId)}`, {}],
+  ['deliverySign', `PrescriptionData/Getdeliverysign?tran_id=${q(S.patientId)}&delivery_date=${q(S.date)}`, {}],
+  ['splitRxDetailByRxNo', `PrescriptionData/GetSplitPrescriptionDetailbyrxno?rx_no=${q(S.rxNo)}`, {}],
+  ['transferRxByGroup', `PrescriptionData/UpdateTransferPriscriptionDataByGroup?GroupID=${q(S.groupId)}&date=${q(S.date)}`, {}],
+  ['latestRxByOldTranId', `PrescriptionData/GetLatestPrescriptionbyOldTranID?external_prescription_id=${q(S.rxNo)}`, {}],
+  ['rxCountByGroup', `PrescriptionData/GetPrescriptionCountbyGroup?groupid=${q(S.groupId)}`, {}],
+  ['techRphByRxNumber', `TaskManagement/GetTechrphByRxNumber?rx_iddata=${q(S.rxNo)}&patient_iddata=${q(S.patientId)}&filldate=${q(S.date)}`, {}],
+  ['ipsDeliverySchedule', `TaskManagement/GetIPSDeliverySchedule?rx_iddata=${q(S.rxNo)}&patient_iddata=${q(S.patientId)}&orderdate=${q(S.date)}`, {}],
+  ['dischargePatientByGroup', `TaskManagement/GetDischangePatientByGroup?external_group_id=${q(S.groupId)}&lastdate=${q(lastdate)}`, {}],
+];
+
+module.exports = { ENDPOINTS, PARITY_EXTRA, SAMPLES: S };

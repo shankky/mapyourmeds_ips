@@ -45,6 +45,7 @@ function dump(groupName, groupRouter, base) {
 
 // Load and print per-controller routers explicitly for exact paths.
 const controllers = {
+  Account: require('../routes/datasync/account'),
   Facility: require('../routes/datasync/facility'),
   GetDataByID: require('../routes/datasync/getDataById'),
   TaskManagement: require('../routes/datasync/taskManagement'),

@@ -135,6 +135,48 @@ const PatientMedPassModel = [ // getMedPassData (live)
   'patient_first', 'dob', 'gender', 'ndc', 'last_tran_id',
 ];
 
+// --- Phase 3 (parity, not consumer-called) ---------------------------------
+
+const ImportPrescriptionMobile = [ // GetPrescriptionDataForMobileByPatient (live)
+  'external_patient_id', 'external_facility_id', 'external_doctor_id', 'external_drug_id',
+  'external_prescription_id', 'pharmacy_order_id', 'drug', 'strength_value', 'strength', 'ndc',
+  'prescribe_date', 'sig_code', 'sig_english', 'original_qty', 'qty', 'days_supply', 'no_of_refill',
+  'morning', 'noon', 'evening', 'night', 'start_date', 'stop_date', 'med_type', 'daw', 'origin_code',
+  'is_active', 'mar_flag', 'tar_flag', 'po_flag', 'last_tran_id', 'discontinue_date',
+  'discontinue_note', 'rx_expire_date', 'last_qty_approved', 'last_qty_billed', 'last_pickedup_date',
+  'tran_date', 'docter_name', 'cfi', 'morning_time', 'noon_time', 'evening_time', 'night_time',
+  'drug_schedule', 'doctor_phone', 'brand_drug', 'Remain_Refill', 'cycle_flag',
+];
+const UpdateTransferPriscriptionDataModel = [ // UpdateTransferPriscriptionDataByGroup (live)
+  'tran_id', 'patient_id', 'rx_id', 'drug', 'active', 'discontinue_date',
+  'Prescription_internal_id_old', 'Prescription_external_id_old',
+];
+const GetLatestPrescription = [ // GetLatestPrescriptionbyOldTranID (live, single object) — all-null sample but names confirmed
+  'Internal_rx_id', 'External_rx_id', 'is_active',
+];
+const GetPatientPrescriptioncountModel = [ // GetPrescriptionCountbyGroup (live)
+  'external_facility_id', 'external_patient_id', 'facility_name', 'lastname', 'firstname', 'totalcount',
+];
+const ModelAccountResponse = [ // GetPatientStatementPelham (DTO-SOURCE — .NET 500 on probe; verify w/ valid params)
+  'row_flag', 'account_id', 'charge_id', 'tran_date', 'opening_balance', 'over30', 'over60', 'over90',
+  'patient_id', 'rx_id', 'prescription_rx_id', 'bill_qty', 'patient_pay', 'patient_paid',
+  'responsible_name', 'responsible_address', 'responsible_phone11', 'responsible_phone12',
+  'responsible_phone13', 'responsible_phone14', 'responsible_zipid', 'responsible_city',
+  'responsible_state', 'patient_lastname', 'patient_firstname', 'patient_middlename',
+  'patient_group_no', 'doctor_firstname', 'doctor_lastname', 'drug', 'strength', 'strength_value',
+  'org_name', 'address1', 'address2', 'office_phone', 'fax_phone', 'note', 'splitqty_flag',
+  'prescription_note', 'bill_date', 'copay_flag', 'care_of', 'account_number',
+  'current_appliedreceipts', 'summary_note', 'active', 'item_type', 'office_code',
+  'responsible_address2', 'billing_phone', 'facility_name', 'usual_customary_fee', 'awp_bill',
+  'ndc', 'days_supply', 'insurance_id', 'insurance_name', 'email', 'account_category_id',
+  'statement_method',
+];
+const ModelTechrphByRxNumber = ['tech', 'rph']; // GetTechrphByRxNumber (DTO-SOURCE — empty on probe)
+const ModelIPSDeliverySchedule = ['tobe_delivered_datetime']; // GetIPSDeliverySchedule (DTO-SOURCE — empty on probe)
+const DischargePatientModel = [ // GetDischangePatientByGroup (DTO-SOURCE — empty on probe)
+  'external_patient_id', 'external_facility_id', 'changed_date',
+];
+
 module.exports = {
   ImportAllFacility,
   ImportFacility,
@@ -155,4 +197,13 @@ module.exports = {
   PvoneSteptwo,
   ModelGetWeeklyRefillReminder,
   PatientMedPassModel,
+  // Phase 3 (parity)
+  ImportPrescriptionMobile,
+  UpdateTransferPriscriptionDataModel,
+  GetLatestPrescription,
+  GetPatientPrescriptioncountModel,
+  ModelAccountResponse,
+  ModelTechrphByRxNumber,
+  ModelIPSDeliverySchedule,
+  DischargePatientModel,
 };

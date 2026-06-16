@@ -85,4 +85,47 @@ router.post('/Getpatientbyinternalid', asyncHandler(async (req, res) => {
   res.json(await repo.getPatientByInternalId(req.query.internalid));
 }));
 
+// --- Phase 3 (parity, not consumer-called) --------------------------------
+
+// POST /api/PrescriptionData/GetUpdatedPrescriptionDataFacility  (body {groupid, facid, lastdate})
+router.post('/GetUpdatedPrescriptionDataFacility', asyncHandler(async (req, res) => {
+  const b = req.body || {};
+  res.json(await repo.getUpdatedPrescriptionDataFacility(b.groupid, b.facid, b.lastdate));
+}));
+
+// POST /api/PrescriptionData/GetPrescriptionDataByPatient?patient_id=
+router.post('/GetPrescriptionDataByPatient', asyncHandler(async (req, res) => {
+  res.json(await repo.getPrescriptionDataByPatient(req.query.patient_id));
+}));
+
+// POST /api/PrescriptionData/GetPrescriptionDataForMobileByPatient?patient_id=
+router.post('/GetPrescriptionDataForMobileByPatient', asyncHandler(async (req, res) => {
+  res.json(await repo.getPrescriptionDataForMobileByPatient(req.query.patient_id));
+}));
+
+// POST /api/PrescriptionData/Getdeliverysign?tran_id=&delivery_date=  → string
+router.post('/Getdeliverysign', asyncHandler(async (req, res) => {
+  res.json(await repo.getDeliverySign(req.query.tran_id, req.query.delivery_date));
+}));
+
+// POST /api/PrescriptionData/GetSplitPrescriptionDetailbyrxno?rx_no=
+router.post('/GetSplitPrescriptionDetailbyrxno', asyncHandler(async (req, res) => {
+  res.json(await repo.getSplitPrescriptionDetailByRxNo(req.query.rx_no));
+}));
+
+// POST /api/PrescriptionData/UpdateTransferPriscriptionDataByGroup?GroupID=&date=
+router.post('/UpdateTransferPriscriptionDataByGroup', asyncHandler(async (req, res) => {
+  res.json(await repo.updateTransferPrescriptionDataByGroup(req.query.GroupID, req.query.date));
+}));
+
+// POST /api/PrescriptionData/GetLatestPrescriptionbyOldTranID?external_prescription_id=
+router.post('/GetLatestPrescriptionbyOldTranID', asyncHandler(async (req, res) => {
+  res.json(await repo.getLatestPrescriptionByOldTranID(req.query.external_prescription_id));
+}));
+
+// POST /api/PrescriptionData/GetPrescriptionCountbyGroup?groupid=
+router.post('/GetPrescriptionCountbyGroup', asyncHandler(async (req, res) => {
+  res.json(await repo.getPrescriptionCountByGroup(req.query.groupid));
+}));
+
 module.exports = router;

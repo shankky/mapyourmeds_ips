@@ -18,7 +18,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-const { ENDPOINTS } = require('./consumer-endpoints');
+const ce = require('./consumer-endpoints');
+const ENDPOINTS = ce.ENDPOINTS.concat(ce.PARITY_EXTRA || []); // capture all 41 for snapshot parity
 
 const DOTNET_BASE = (process.env.DOTNET_BASE_URL || '').replace(/\/$/, '');
 if (!DOTNET_BASE) {

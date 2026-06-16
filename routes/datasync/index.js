@@ -15,6 +15,7 @@
 const express = require('express');
 const router = express.Router();
 
+router.use('/Account', require('./account'));
 router.use('/Facility', require('./facility'));
 router.use('/GetDataByID', require('./getDataById'));
 router.use('/TaskManagement', require('./taskManagement'));

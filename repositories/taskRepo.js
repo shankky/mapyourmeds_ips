@@ -58,6 +58,23 @@ async function deliveryByPatient(Patient_id) {
   return mapRows(await callProc('sp_mym_getdeliverybypatient', [Patient_id]), S.TransactionHistory);
 }
 
+// --- Phase 3 (parity, not consumer-called) --------------------------------
+
+/** sp_mym_get_tech_rph_byrxnumber(rx_iddata, patient_iddata, filldate) → ModelTechrphByRxNumber[] */
+async function getTechrphByRxNumber(rx_iddata, patient_iddata, filldate) {
+  return mapRows(await callProc('sp_mym_get_tech_rph_byrxnumber', [rx_iddata, patient_iddata, filldate]), S.ModelTechrphByRxNumber);
+}
+
+/** sp_mym_getipsdeliveryschedule(rx_iddata, patient_iddata, orderdate) → ModelIPSDeliverySchedule[] */
+async function getIPSDeliverySchedule(rx_iddata, patient_iddata, orderdate) {
+  return mapRows(await callProc('sp_mym_getipsdeliveryschedule', [rx_iddata, patient_iddata, orderdate]), S.ModelIPSDeliverySchedule);
+}
+
+/** sp_mym_getdischargedpatient_bygroup(external_group_id, lastdate) → DischargePatientModel[] */
+async function getDischargePatientByGroup(external_group_id, lastdate) {
+  return mapRows(await callProc('sp_mym_getdischargedpatient_bygroup', [external_group_id, lastdate]), S.DischargePatientModel);
+}
+
 module.exports = {
   getPatientByFacility,
   getPatientData,
@@ -67,4 +84,8 @@ module.exports = {
   pvOneStepOneStatusByRxNumber,
   pvOneStepTwoStatusByRxNumber,
   deliveryByPatient,
+  // Phase 3
+  getTechrphByRxNumber,
+  getIPSDeliverySchedule,
+  getDischargePatientByGroup,
 };

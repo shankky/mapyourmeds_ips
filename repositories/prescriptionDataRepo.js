@@ -12,7 +12,7 @@
  */
 
 const { callProc, callSql, getString } = require('../db/queryHelper');
-const { mapRows } = require('../mappers/dtoMapper');
+const { mapRows, mapSingle } = require('../mappers/dtoMapper');
 const S = require('../mappers/schemas');
 
 // --- "bare controller" branches (consumer-critical) -----------------------
@@ -74,6 +74,48 @@ async function getPatientByInternalId(internalid) {
   return mapRows(await callProc('sp_mym_getpatientbyinternalid', [internalid]), S.ImportPatientInternalTask);
 }
 
+// --- Phase 3 (parity, not consumer-called) --------------------------------
+
+/** sp_mym_getprescriptionbygroupandfacility(groupid, facid, lastdate) → ImportPrescription[] */
+async function getUpdatedPrescriptionDataFacility(groupid, facid, lastdate) {
+  return mapRows(await callProc('sp_mym_getprescriptionbygroupandfacility', [groupid, facid, lastdate]), S.ImportPrescription);
+}
+
+/** sp_mym_getprescriptionbypatient(patient_id) → ImportPrescription[] */
+async function getPrescriptionDataByPatient(patient_id) {
+  return mapRows(await callProc('sp_mym_getprescriptionbypatient', [patient_id]), S.ImportPrescription);
+}
+
+/** sp_mym_getprescriptionformobilebypatient(patient_id) → ImportPrescriptionMobile[] */
+async function getPrescriptionDataForMobileByPatient(patient_id) {
+  return mapRows(await callProc('sp_mym_getprescriptionformobilebypatient', [patient_id]), S.ImportPrescriptionMobile);
+}
+
+/** sp_mym_getdeliverysignbyrxdeliverydate(tran_id, delivery_date) → string */
+function getDeliverySign(tran_id, delivery_date) {
+  return getString(callSql('sp_mym_getdeliverysignbyrxdeliverydate', 2), [tran_id, delivery_date]);
+}
+
+/** dba.sp_mym_splitprescriptions_individual(rx_no) → SplitPrescriptionsModel[] */
+async function getSplitPrescriptionDetailByRxNo(rx_no) {
+  return mapRows(await callProc('dba.sp_mym_splitprescriptions_individual', [rx_no]), S.SplitPrescriptionsModel);
+}
+
+/** sp_mym_getprescriptionbygroup_transfer(GroupID, date) → UpdateTransferPriscriptionDataModel[] */
+async function updateTransferPrescriptionDataByGroup(GroupID, date) {
+  return mapRows(await callProc('sp_mym_getprescriptionbygroup_transfer', [GroupID, date]), S.UpdateTransferPriscriptionDataModel);
+}
+
+/** sp_mym_getlatestprescription(external_prescription_id) → GetLatestPrescription (single) */
+async function getLatestPrescriptionByOldTranID(external_prescription_id) {
+  return mapSingle(await callProc('sp_mym_getlatestprescription', [external_prescription_id]), S.GetLatestPrescription);
+}
+
+/** sp_mym_getprescriptioncountbygroup(groupid) → GetPatientPrescriptioncountModel[] */
+async function getPrescriptionCountByGroup(groupid) {
+  return mapRows(await callProc('sp_mym_getprescriptioncountbygroup', [groupid]), S.GetPatientPrescriptioncountModel);
+}
+
 module.exports = {
   getUpdatedPrescriptionData,
   getUpdatedPrescriptionDataByFacilityID,
@@ -86,4 +128,13 @@ module.exports = {
   getRoute4MeDataByDate,
   getPrescriptionImagePath,
   getPatientByInternalId,
+  // Phase 3
+  getUpdatedPrescriptionDataFacility,
+  getPrescriptionDataByPatient,
+  getPrescriptionDataForMobileByPatient,
+  getDeliverySign,
+  getSplitPrescriptionDetailByRxNo,
+  updateTransferPrescriptionDataByGroup,
+  getLatestPrescriptionByOldTranID,
+  getPrescriptionCountByGroup,
 };

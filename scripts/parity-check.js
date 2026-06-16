@@ -31,7 +31,13 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-const { ENDPOINTS, SAMPLES } = require('./consumer-endpoints');
+const { ENDPOINTS, PARITY_EXTRA, SAMPLES } = require('./consumer-endpoints');
+
+// By default check the consumer 29 PLUS the Phase-3 parity endpoints (41 total).
+// Set PARITY_CONSUMER_ONLY=1 to check only the 29 consumer-critical endpoints.
+const ALL_ENDPOINTS = process.env.PARITY_CONSUMER_ONLY === '1'
+  ? ENDPOINTS
+  : ENDPOINTS.concat(PARITY_EXTRA || []);
 
 const EXPRESS_BASE = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const DOTNET_BASE = process.env.DOTNET_BASE_URL ? process.env.DOTNET_BASE_URL.replace(/\/$/, '') : null;
@@ -141,7 +147,7 @@ async function getDotnet(label, relPath, body) {
   const report = [];
   let shapeOk = 0, shapeBad = 0, skipped = 0;
 
-  for (const [label, relPath, body] of ENDPOINTS) {
+  for (const [label, relPath, body] of ALL_ENDPOINTS) {
     /* eslint-disable no-await-in-loop */
     const ex = await postJson(EXPRESS_BASE, relPath, body);
     const dn = await getDotnet(label, relPath, body);
