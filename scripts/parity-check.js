@@ -53,7 +53,9 @@ function postJson(base, relPath, body) {
         path: url.pathname + url.search,
         headers: { 'content-type': 'application/json', 'content-length': data.length },
         rejectUnauthorized: false, // old API may have a self-signed/internal cert
-        timeout: parseInt(process.env.PARITY_TIMEOUT_MS || '15000', 10),
+        // 180s default: some IPS endpoints are slow (e.g. getCycleRx ~62s for
+        // ~19 MB). A low timeout falsely reports __error on a working endpoint.
+        timeout: parseInt(process.env.PARITY_TIMEOUT_MS || '180000', 10),
       },
       (res) => {
         let buf = '';

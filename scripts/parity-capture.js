@@ -35,7 +35,7 @@ function postJson(base, relPath, body) {
     const lib = url.protocol === 'https:' ? https : http;
     const data = Buffer.from(JSON.stringify(body || {}));
     const req = lib.request(
-      { method: 'POST', hostname: url.hostname, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: url.pathname + url.search, headers: { 'content-type': 'application/json', 'content-length': data.length }, rejectUnauthorized: false, timeout: parseInt(process.env.PARITY_TIMEOUT_MS || '15000', 10) },
+      { method: 'POST', hostname: url.hostname, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: url.pathname + url.search, headers: { 'content-type': 'application/json', 'content-length': data.length }, rejectUnauthorized: false, timeout: parseInt(process.env.PARITY_TIMEOUT_MS || '180000', 10) },
       (res) => { let buf = ''; res.on('data', (c) => (buf += c)); res.on('end', () => { let j; try { j = JSON.parse(buf); } catch (_) { j = buf; } resolve({ status: res.statusCode, json: j }); }); }
     );
     req.on('timeout', () => { req.destroy(new Error('request timed out')); });
