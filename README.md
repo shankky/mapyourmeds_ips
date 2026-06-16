@@ -10,6 +10,9 @@ HTTP contract the existing consumer (`mym/config/ips.class.js`) depends on.
 Deployed: **Express (new)** `http://ipsnode.mapyourmedsapi.com/` · **.NET (old)** `https://mymsync.mapyourmedsapi.com:5003`.
 Contract-parity check (Express vs .NET): see `parity/README.md` and `npm run parity`.
 
+**Deploying to a server?** Follow **`DEPLOYMENT.md`** (full production runbook: prerequisites, .env,
+IIS web.config + ARR timeout, PM2, verify, rollback). IIS-specifics in `iis/README.md`.
+
 Full design + task plan: see `dev_plan/060426_ips_expressjs_port_dev_plan.md` and the
 `memory-bank/` in the source repo (`d:\aws_repos\ips_mainNew`).
 
