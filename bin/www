@@ -9,11 +9,13 @@ var debug = require('debug')('mapyourmeds-ips:server');
 var http = require('http');
 var { initPools, closePools } = require('../db/pool');
 var { startupSelfTest } = require('../db/selfTest');
+var { startKeepalive, stopKeepalive } = require('../db/keepalive');
 var logger = require('../utils/logger');
 
 // Graceful shutdown: close pools before exit.
 function shutdown(signal) {
   logger.info('[server] ' + signal + ' received, shutting down');
+  stopKeepalive();
   closePools().finally(function () { process.exit(0); });
 }
 process.on('SIGINT', function () { shutdown('SIGINT'); });
@@ -58,6 +60,7 @@ server.headersTimeout = parseInt(process.env.HEADERS_TIMEOUT_MS || '320000', 10)
 async function bootstrap() {
   await initPools();
   await startupSelfTest(); // may process.exit(1) in fail-fast mode
+  startKeepalive();        // keep idle DB connections warm + background auto-recover
   server.listen(port);
   server.on('error', onError);
   server.on('listening', onListening);

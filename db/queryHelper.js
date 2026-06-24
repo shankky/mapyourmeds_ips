@@ -16,8 +16,34 @@
  * `.columns`, `.statement`). We normalize to a clean array for callers.
  */
 
-const { getPool } = require('./pool');
+const { getPool, recreatePool } = require('./pool');
 const logger = require('../utils/logger');
+
+/**
+ * Is this error a dead/stale CONNECTION (vs a real SQL error)? After idle time,
+ * SQL Anywhere / the network drops pooled connections, but the odbc pool still
+ * hands out the dead handles — queries then fail with messages like
+ * "[odbc] Error executing the sql statement" / connection-reset / not-connected.
+ * On these we recreate the pool and retry once. We do NOT retry genuine SQL
+ * errors (syntax, bad params) — those would just fail again.
+ */
+function isStaleConnectionError(err) {
+  const m = (err && err.message ? err.message : '').toLowerCase();
+  // Never treat the large-result OOM (getCycleRx etc.) as stale — that's a fetch
+  // mode issue, not a dead connection; recreating the pool wouldn't help.
+  if (m.includes('allocating') || m.includes('fetching results with sqlfetch')) return false;
+  return (
+    m.includes('error executing the sql statement') || // observed symptom of a dead idle connection
+    m.includes('communication link failure') ||
+    m.includes('not connected') ||
+    m.includes('disconnect') ||
+    m.includes('connection was closed') ||
+    m.includes('connection reset') ||
+    m.includes('connection is closed') ||
+    m.includes('-308') || // SQL Anywhere: connection not found
+    m.includes('-85')     // SQL Anywhere: communication error
+  );
+}
 
 /**
  * Swallowed-error registry (H1/H5 hardening).
@@ -71,17 +97,36 @@ function toRows(result) {
 
 /**
  * Execute a parameterized query/stored-proc call and return mapped rows.
+ *
+ * SELF-HEALING: if the query fails with a stale-connection error (the pool
+ * handed out a dead idle connection — see isStaleConnectionError), recreate the
+ * pool and retry ONCE. This fixes the "works at boot, breaks after days idle"
+ * problem without a process restart. Real SQL errors are not retried.
+ *
  * @param {string} sql   e.g. "CALL sp_api_getpatientbyfacility(?)"
  * @param {Array}  params bound parameters (default [])
- * @param {object} pool   odbc pool (defaults to the IPS pool)
+ * @param {object} pool   explicit odbc pool (optional; defaults to IPS pool)
+ * @param {string} poolName which pool to recreate on stale error ('ips'|'drug')
  * @returns {Promise<Array<object>>}
  */
-async function executeQuery(sql, params = [], pool = null) {
+async function executeQuery(sql, params = [], pool = null, poolName = 'ips') {
   const activePool = pool || (await getPool());
   try {
     const result = await activePool.query(sql, params);
     return toRows(result);
   } catch (err) {
+    if (isStaleConnectionError(err)) {
+      logger.warn(`[db] stale-connection error, recreating ${poolName} pool & retrying once :: ${sql} :: ${err.message}`);
+      try {
+        const freshPool = await recreatePool(poolName);
+        const result = await freshPool.query(sql, params);
+        logger.info(`[db] retry after pool recreate SUCCEEDED :: ${sql}`);
+        return toRows(result);
+      } catch (err2) {
+        logger.error(`[db] retry after pool recreate FAILED: ${err2.message} :: ${sql} :: params=${JSON.stringify(params)}`);
+        throw err2;
+      }
+    }
     logger.error(`[db] executeQuery failed: ${err.message} :: ${sql} :: params=${JSON.stringify(params)}`);
     throw err;
   }

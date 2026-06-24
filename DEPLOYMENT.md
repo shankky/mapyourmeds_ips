@@ -141,6 +141,25 @@ Apply the repo's `iis/web.config` to the **IIS site that proxies to Node** (site
 
 ---
 
+## 7b. Troubleshooting — status page / queries fail after the server sat idle
+
+**Symptom:** after hours/days of no traffic, `/` (status) shows 503 and logs show
+`[odbc] Error executing the sql statement :: SELECT 1 AS ok` (NOT "Error connecting").
+
+**Cause:** SQL Anywhere (idle timeout, server option `-ti`, default 240 min) or a network/firewall
+dropped the pooled connections; the odbc pool kept handing out the dead handles.
+
+**Built-in mitigations (since 2026-06-24):**
+- queryHelper detects stale-connection errors → **recreates the pool and retries once** (self-heals
+  without a restart). Look for `[db] stale-connection error, recreating ... pool & retrying once` then
+  `retry after pool recreate SUCCEEDED` in the logs.
+- A **keepalive** pings `SELECT 1` every `DB_KEEPALIVE_INTERVAL_MS` (default 2 min) so connections never
+  idle long enough to drop. Disable with `DB_KEEPALIVE_ENABLED=0`.
+
+**If it still happens:** lower `DB_KEEPALIVE_INTERVAL_MS` below the SQL Anywhere `-ti` / firewall idle
+timeout. A `pm2 restart mapyourmeds-ips` always clears it immediately. (Consider raising the DB's `-ti`
+or the firewall TCP idle timeout for belt-and-suspenders.)
+
 ## 8. Rollback
 
 - [ ] `git checkout <previous-good-commit>` (or `git revert`) → `pm2 restart mapyourmeds-ips`.

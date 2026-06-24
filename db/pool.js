@@ -89,6 +89,26 @@ async function initPools() {
   }
 }
 
+/**
+ * Recreate a pool after its connections have gone stale (e.g. SQL Anywhere or a
+ * firewall dropped idle connections, so pooled handles are dead and every query
+ * fails with "[odbc] Error executing the sql statement"). Disposes the old pool
+ * (best-effort) and clears the cached promise so the next getPool/getDrugPool
+ * builds fresh connections. `which` = 'ips' | 'drug'.
+ */
+async function recreatePool(which) {
+  const isDrug = which === 'drug' && !config.db.drug.sameAsIps;
+  const existing = isDrug ? drugPoolPromise : ipsPoolPromise;
+  logger.warn(`[db] recreating ${isDrug ? 'drug' : 'ips'} pool (stale connections)`);
+  // Drop the cached promise first so concurrent callers don't reuse the dead pool.
+  if (isDrug) drugPoolPromise = null; else ipsPoolPromise = null;
+  // Best-effort close of the old pool (don't block on a hung close).
+  if (existing) {
+    existing.then((p) => p.close()).catch(() => {});
+  }
+  return isDrug ? getDrugPool() : getPool();
+}
+
 /** Close pools on shutdown. */
 async function closePools() {
   const tasks = [];
@@ -104,4 +124,4 @@ async function closePools() {
   logger.info('[db] pools closed');
 }
 
-module.exports = { getPool, getDrugPool, initPools, closePools };
+module.exports = { getPool, getDrugPool, initPools, closePools, recreatePool };
