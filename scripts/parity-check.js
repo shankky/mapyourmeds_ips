@@ -137,6 +137,36 @@ function countValueDiffs(a, b, max) {
   walk(a, b); return diffs;
 }
 
+// Classify a string value's "format" so we can catch FORMAT mismatches that
+// shape/field checks miss (e.g. ISO date on one side, US-culture date on the
+// other). Returns a coarse tag; only flag when tags differ AND both look date-ish.
+const ISO_DATEISH = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?$/;
+const US_DATEISH = /^\d{1,2}\/\d{1,2}\/\d{4}( \d{1,2}:\d{2}:\d{2} [AP]M)?$/i;
+function fmtTag(v) {
+  if (typeof v !== 'string') return null;
+  if (ISO_DATEISH.test(v)) return 'iso-date';
+  if (US_DATEISH.test(v)) return 'us-date';
+  return null;
+}
+
+/**
+ * Detect per-field FORMAT mismatches by sampling the first row of each side.
+ * Returns a list of "field: expressTag vs dotnetTag" where a date-format differs.
+ */
+function formatMismatches(a, b) {
+  const ra = Array.isArray(a) ? a[0] : a;
+  const rb = Array.isArray(b) ? b[0] : b;
+  if (!ra || !rb || typeof ra !== 'object' || typeof rb !== 'object') return [];
+  const out = [];
+  for (const k of Object.keys(ra)) {
+    if (!(k in rb)) continue;
+    const ta = fmtTag(ra[k]);
+    const tb = fmtTag(rb[k]);
+    if (ta && tb && ta !== tb) out.push(`${k} (express:${ta} vs .NET:${tb})`);
+  }
+  return out;
+}
+
 function diff(a, b) {
   const aFields = [...fieldSet(a)];
   const bFields = [...fieldSet(b)];
@@ -149,6 +179,7 @@ function diff(a, b) {
     fieldsMatch,
     onlyExpress,
     onlyDotnet,
+    formatMismatches: formatMismatches(a, b),
     valueDiffs: shapeMatch ? countValueDiffs(a, b, 1000) : null,
   };
 }
@@ -203,14 +234,17 @@ async function getDotnet(label, relPath, body) {
       continue;
     }
 
-    const ok = d.shapeMatch && d.fieldsMatch;
+    const fmtBad = d.formatMismatches && d.formatMismatches.length > 0;
+    const ok = d.shapeMatch && d.fieldsMatch && !fmtBad; // FORMAT mismatch is a failure too
     if (ok) shapeOk++; else shapeBad++;
 
     const valNote = d.valueDiffs === null ? '' : ` | values:${d.valueDiffs}${d.valueDiffs ? ' (live-data drift?)' : ' identical'}`;
-    console.log(`${ok ? 'OK  ' : 'XX  '} ${label.padEnd(34)} express[${ex.status}] dotnet[${dn.status}] shape:${d.shapeMatch ? 'match' : 'DIFF'} fields:${d.fieldsMatch ? 'match' : 'DIFF'}${valNote}`);
+    const fmtNote = fmtBad ? ' fmt:DIFF' : '';
+    console.log(`${ok ? 'OK  ' : 'XX  '} ${label.padEnd(34)} express[${ex.status}] dotnet[${dn.status}] shape:${d.shapeMatch ? 'match' : 'DIFF'} fields:${d.fieldsMatch ? 'match' : 'DIFF'}${fmtNote}${valNote}`);
     if (!ok) {
       if (d.onlyExpress.length) console.log(`        only in Express: ${d.onlyExpress.slice(0, 12).join(', ')}`);
       if (d.onlyDotnet.length) console.log(`        only in .NET   : ${d.onlyDotnet.slice(0, 12).join(', ')}`);
+      if (fmtBad) console.log(`        FORMAT mismatch: ${d.formatMismatches.slice(0, 8).join('; ')}`);
     }
     report.push({ label, relPath, expressStatus: ex.status, dotnetStatus: dn.status, ...d });
   }
